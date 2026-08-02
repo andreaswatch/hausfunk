@@ -1,0 +1,22 @@
+api:
+  listen: ":1984"
+
+rtsp:
+  listen: ":8554"
+
+webrtc:
+  listen: ":8555"
+  candidates:
+    - sprechanlage.moers.webredirect.org:8555
+    - frontdoor.moers.webredirect.org:8555
+    - 192.168.178.99:8555
+    - STUN:stun.l.google.com:19302
+
+streams:
+  tuerkamera:
+    - exec:/opt/src-video.sh#video=h264#exec=always
+    - exec:/opt/src-audio.sh {output}#exec=always
+    - exec:/opt/src-backchannel.sh#backchannel=1#audio=alaw/8000
+
+preload:
+  tuerkamera: "video&audio"

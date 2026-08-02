@@ -1,0 +1,10 @@
+[Unit]
+Description=go2rtc
+After=network.target
+
+[Service]
+ExecStart=/opt/go2rtc -config /opt/go2rtc.yaml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

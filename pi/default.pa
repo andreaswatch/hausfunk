@@ -1,0 +1,5 @@
+.include /etc/pulse/default.pa
+
+### Intercom volumes (speaker 90%, mic 200%)
+set-sink-volume alsa_output.platform-soc_sound.stereo-fallback 90%
+set-source-volume alsa_input.platform-soc_sound.stereo-fallback 200%
