@@ -60,35 +60,43 @@ class TestEntities(unittest.TestCase):
         )
         self.assertTrue(switch.is_on)
 
-    def test_camera_stream_source_default_port(self):
-        camera = HausfunkCamera(self._coordinator())
-        self.assertEqual(
-            camera.stream_source, "rtsp://127.0.0.1:18554/tuer"
-        )
-        self.assertTrue(camera.available)
-
-    def test_camera_unavailable_when_pi_down(self):
-        coordinator = self._coordinator()
-        coordinator.data = {"pi_reachable": False, "stream_active": False}
-        camera = HausfunkCamera(coordinator)
-        self.assertFalse(camera.available)
-        self.assertIsNone(camera.stream_source)
-
-    def test_camera_custom_host_port(self):
-        config = dict(CONFIG)
-        config[CONF_GO2RTC_HOST] = "10.0.0.5"
-        config[CONF_GO2RTC_RTSP_PORT] = 8554
-        coordinator = HausfunkCoordinator(hass=None, config=config)
-        coordinator.data = {"pi_reachable": True, "stream_active": True}
-        camera = HausfunkCamera(coordinator)
-        self.assertEqual(camera.stream_source, "rtsp://10.0.0.5:8554/tuer")
-
     def test_camera_device_info(self):
         camera = HausfunkCamera(self._coordinator())
         self.assertEqual(
             camera.device_info,
             {"identifiers": {(DOMAIN, "192.168.178.11")}},
         )
+        self.assertTrue(camera.use_stream_for_stills)
+
+
+class TestCameraAsync(unittest.IsolatedAsyncioTestCase):
+    def _coordinator(self):
+        coordinator = HausfunkCoordinator(hass=None, config=CONFIG)
+        coordinator.data = {"pi_reachable": True, "stream_active": True}
+        return coordinator
+
+    async def test_camera_stream_source_default_port(self):
+        camera = HausfunkCamera(self._coordinator())
+        self.assertEqual(
+            await camera.stream_source(), "rtsp://127.0.0.1:18554/tuer"
+        )
+        self.assertTrue(camera.available)
+
+    async def test_camera_unavailable_when_pi_down(self):
+        coordinator = self._coordinator()
+        coordinator.data = {"pi_reachable": False, "stream_active": False}
+        camera = HausfunkCamera(coordinator)
+        self.assertFalse(camera.available)
+        self.assertIsNone(await camera.stream_source())
+
+    async def test_camera_custom_host_port(self):
+        config = dict(CONFIG)
+        config[CONF_GO2RTC_HOST] = "10.0.0.5"
+        config[CONF_GO2RTC_RTSP_PORT] = 8554
+        coordinator = HausfunkCoordinator(hass=None, config=config)
+        coordinator.data = {"pi_reachable": True, "stream_active": True}
+        camera = HausfunkCamera(coordinator)
+        self.assertEqual(await camera.stream_source(), "rtsp://10.0.0.5:8554/tuer")
 
 
 if __name__ == "__main__":

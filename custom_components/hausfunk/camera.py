@@ -57,8 +57,7 @@ class HausfunkCamera(CoordinatorEntity, Camera):
             self.coordinator.data and self.coordinator.data.get("pi_reachable")
         )
 
-    @property
-    def stream_source(self) -> str | None:
+    async def stream_source(self) -> str | None:
         if not self.available:
             return None
         config = self.coordinator.config
@@ -66,3 +65,8 @@ class HausfunkCamera(CoordinatorEntity, Camera):
         port = config.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT)
         name = config[CONF_STREAM_NAME]
         return f"rtsp://{host}:{port}/{name}"
+
+    @property
+    def use_stream_for_stills(self) -> bool:
+        """Generate thumbnails from the live stream instead of a camera API."""
+        return True
