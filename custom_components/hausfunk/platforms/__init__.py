@@ -1,1 +1,0 @@
-"""Hausfunk platforms."""

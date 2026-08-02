@@ -52,6 +52,7 @@ class Go2rtcClient:
                     )
                 return await resp.text()
         except aiohttp.ClientError as err:
+            await self.close()
             raise Go2rtcError(f"go2rtc nicht erreichbar: {err}") from err
 
     async def ensure_session(self):
