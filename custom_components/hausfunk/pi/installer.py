@@ -78,13 +78,29 @@ class HausfunkInstaller:
         self._sudo_password = password
         try:
             await self.ssh.connect()
+            _LOGGER.info("Verbunden mit Pi, starte Installation")
+            
             await self._detect_home()
+            _LOGGER.info(f"Home-Verzeichnis: {self._home_dir}")
+            
             arch = await self._detect_arch()
+            _LOGGER.info(f"Architektur erkannt: {arch}")
+            
             await self._ensure_ffmpeg()
+            _LOGGER.info("ffmpeg vorhanden")
+            
             await self._download_binary(arch)
+            _LOGGER.info(f"Binary installiert: {self._binary_path}")
+            
             await self._write_config()
+            _LOGGER.info(f"Config geschrieben: {self._config_path}")
+            
             await self._write_service()
+            _LOGGER.info("Service-Datei geschrieben")
+            
             await self._enable_service()
+            _LOGGER.info("Service aktiviert und gestartet")
+            
             return f"Hausfunk Pi eingerichtet (go2rtc {self.config[CONF_GO2RTC_VERSION]}, Arch: {arch})"
         finally:
             await self.ssh.close()
@@ -94,14 +110,30 @@ class HausfunkInstaller:
         self._sudo_password = password
         try:
             await self.ssh.connect()
+            _LOGGER.info("Verbunden mit Pi, starte Update")
+            
             await self._detect_home()
             arch = await self._detect_arch()
+            
             await self._download_binary(arch)
-            status, _out, err = await self._sudo(
-                f"systemctl restart {PI_SERVICE_NAME}"
-            )
+            _LOGGER.info(f"Binary aktualisiert: {self._binary_path}")
+            
+            # Restart service
+            status, out, err = await self.ssh.run(f"systemctl --user restart {PI_SERVICE_NAME}")
             if status != 0:
-                raise PiCommandError(f"Restart fehlgeschlagen: {err}")
+                status2, out2, err2 = await self.ssh.run(f"systemctl --user status {PI_SERVICE_NAME} || true")
+                raise PiCommandError(f"Restart fehlgeschlagen: {err}\nStatus: {out2}")
+            
+            # Wait for restart
+            await self.ssh.run("sleep 2")
+            
+            # Verify service is active
+            status, out, err = await self.ssh.run(f"systemctl --user is-active {PI_SERVICE_NAME}")
+            if status != 0 or "active" not in out:
+                status2, out2, err2 = await self.ssh.run(f"systemctl --user status {PI_SERVICE_NAME} || true")
+                raise PiCommandError(f"Service nicht aktiv nach Restart: {out.strip()}\nStatus: {out2}")
+            
+            _LOGGER.info("Service erfolgreich neu gestartet")
             return f"go2rtc auf {self.config[CONF_GO2RTC_VERSION]} aktualisiert"
         finally:
             await self.ssh.close()
@@ -127,21 +159,62 @@ class HausfunkInstaller:
             raise PiCommandError(f"ffmpeg-Installation fehlgeschlagen: {err}")
 
     async def _download_binary(self, arch: str):
+        """Download go2rtc binary with robust error handling."""
         version = self.config[CONF_GO2RTC_VERSION]
         url = GO2RTC_RELEASE_URL.format(version=version, arch=arch)
+        
         await self._ensure_dir()
-        status, _out, err = await self.ssh.run(
-            f"curl -fsSL -o {self._binary_path} {url} && chmod +x {self._binary_path} && test -x {self._binary_path}"
+        
+        # Download to temporary file first
+        temp_path = f"{self._binary_path}.tmp"
+        _LOGGER.info(f"Lade go2rtc von {url} herunter")
+        
+        status, out, err = await self.ssh.run(
+            f"curl -fsSL --max-time 120 -o {temp_path} {url}",
+            timeout=150
         )
         if status != 0:
-            raise PiCommandError(f"Binary-Download fehlgeschlagen: {err}")
+            # Clean up temp file if it exists
+            await self.ssh.run(f"rm -f {temp_path}")
+            raise PiCommandError(f"Download fehlgeschlagen: {err or out}")
+        
+        # Verify temp file exists and has content
+        status, out, err = await self.ssh.run(f"test -s {temp_path}")
+        if status != 0:
+            await self.ssh.run(f"rm -f {temp_path}")
+            raise PiCommandError(f"Downloaded Datei ist leer oder fehlt")
+        
+        # Make executable and move to final location
+        status, out, err = await self.ssh.run(f"chmod +x {temp_path} && mv {temp_path} {self._binary_path}")
+        if status != 0:
+            await self.ssh.run(f"rm -f {temp_path}")
+            raise PiCommandError(f"Konnte Binary nicht installieren: {err}")
+        
+        # Verify final binary is executable
+        status, out, err = await self.ssh.run(f"test -x {self._binary_path}")
+        if status != 0:
+            raise PiCommandError(f"Binary nicht ausführbar nach Installation")
+        
+        _LOGGER.debug(f"Binary erfolgreich installiert: {self._binary_path}")
 
     async def _ensure_dir(self):
-        status, _out, err = await self.ssh.run(f"mkdir -p {self._home_dir}/{PI_SUBDIR}")
+        """Ensure the installation directory exists and is writable."""
+        install_dir = f"{self._home_dir}/{PI_SUBDIR}"
+        
+        # Create directory
+        status, out, err = await self.ssh.run(f"mkdir -p {install_dir}")
         if status != 0:
-            raise PiCommandError(f"mkdir fehlgeschlagen: {err}")
+            raise PiCommandError(f"Konnte Verzeichnis nicht erstellen: {install_dir} - {err}")
+        
+        # Verify directory exists and is writable
+        status, out, err = await self.ssh.run(f"test -d {install_dir} && test -w {install_dir}")
+        if status != 0:
+            raise PiCommandError(f"Verzeichnis nicht beschreibbar: {install_dir}")
+        
+        _LOGGER.debug(f"Installationsverzeichnis bereit: {install_dir}")
 
     async def _write_config(self):
+        """Write go2rtc config file with verification."""
         content = _render("go2rtc.yaml.j2", {
             "rtsp_port": self.config[CONF_RTSP_PORT],
             "stream_name": self.config[CONF_STREAM_NAME],
@@ -150,34 +223,74 @@ class HausfunkInstaller:
             "fps": self.config[CONF_FPS],
             "audio_gain": self.config[CONF_AUDIO_GAIN],
         })
+        
         await self.ssh.write_file(self._config_path, content)
+        
+        # Verify config was written
+        status, out, err = await self.ssh.run(f"test -s {self._config_path}")
+        if status != 0:
+            raise PiCommandError(f"Config-Datei wurde nicht geschrieben: {self._config_path}")
+        
+        _LOGGER.debug(f"Config erfolgreich geschrieben: {self._config_path}")
 
     async def _write_service(self):
+        """Write systemd user service file with verification."""
         status, out, _err = await self.ssh.run("id -u")
         if status != 0:
             raise PiCommandError("id -u fehlgeschlagen")
         uid = out.strip()
+        
         content = _render("hausfunk-pi.service.j2", {
             "binary_path": self._binary_path,
             "config_path": self._config_path,
             "pi_user": self.config[CONF_PI_USERNAME],
             "uid": uid,
         })
+        
         service_path = SERVICE_PATH_TEMPLATE.format(
             home_dir=self._home_dir,
             service_dir=PI_USER_SERVICE_DIR,
             service_name=PI_SERVICE_NAME,
         )
+        
+        # Ensure service directory exists
+        service_dir = f"{self._home_dir}/{PI_USER_SERVICE_DIR}"
+        status, out, err = await self.ssh.run(f"mkdir -p {service_dir}")
+        if status != 0:
+            raise PiCommandError(f"Konnte Service-Verzeichnis nicht erstellen: {service_dir} - {err}")
+        
+        # Write service file
         await self.ssh.write_file(service_path, content)
+        
+        # Verify service file was written
+        status, out, err = await self.ssh.run(f"test -s {service_path}")
+        if status != 0:
+            raise PiCommandError(f"Service-Datei wurde nicht geschrieben: {service_path}")
+        
+        _LOGGER.debug(f"Service-Datei erfolgreich geschrieben: {service_path}")
 
     async def _enable_service(self):
-        status, _out, err = await self.ssh.run(
-            f"systemctl --user daemon-reload && systemctl --user enable --now {PI_SERVICE_NAME}"
-        )
+        """Enable and start the systemd user service with verification."""
+        # Reload systemd daemon
+        status, out, err = await self.ssh.run("systemctl --user daemon-reload")
         if status != 0:
-            raise PiCommandError(f"Service-Aktivierung fehlgeschlagen: {err}")
-        status, out, _err = await self.ssh.run(
-            f"systemctl --user is-active {PI_SERVICE_NAME}"
-        )
+            raise PiCommandError(f"systemctl daemon-reload fehlgeschlagen: {err}")
+        
+        # Enable and start service
+        status, out, err = await self.ssh.run(f"systemctl --user enable --now {PI_SERVICE_NAME}")
+        if status != 0:
+            # Get more detailed error info
+            status2, out2, err2 = await self.ssh.run(f"systemctl --user status {PI_SERVICE_NAME} || true")
+            raise PiCommandError(f"Service-Aktivierung fehlgeschlagen: {err}\nStatus: {out2}")
+        
+        # Wait a moment for service to start
+        await self.ssh.run("sleep 2")
+        
+        # Verify service is active
+        status, out, err = await self.ssh.run(f"systemctl --user is-active {PI_SERVICE_NAME}")
         if status != 0 or "active" not in out:
-            raise PiCommandError(f"Service nicht aktiv: {out.strip()}")
+            # Get detailed status for debugging
+            status2, out2, err2 = await self.ssh.run(f"systemctl --user status {PI_SERVICE_NAME} || true")
+            raise PiCommandError(f"Service nicht aktiv: {out.strip()}\nStatus: {out2}")
+        
+        _LOGGER.debug(f"Service erfolgreich aktiviert: {PI_SERVICE_NAME}")

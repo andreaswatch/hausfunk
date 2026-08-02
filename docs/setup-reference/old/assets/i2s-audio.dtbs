@@ -1,0 +1,54 @@
+// Definitions for a i2s soundcard overlay
+// Tested with INMP441 and MAX98357a.
+// forked from https://raw.githubusercontent.com/raspberrypi/linux/3b01f059d2ef9e48aca5174fc7f3b5c40fe2488c/arch/arm/boot/dts/overlays/i2saudio-soundcard-overlay.dts
+// https://github.com/raspberrypi/linux/blob/8c3e7a55220cb7cb13131bb8dccd37694537eb97/arch/arm/boot/dts/overlays/i2saudio-soundcard-overlay.dts
+
+// Definitions for Google voiceHAT v1 soundcard overlay
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2708";
+
+	fragment@0 {
+		target = <&i2s>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			i2saudio_pins: i2saudio_pins {
+				brcm,pins = <4>;
+				brcm,function = <1>; /* out */
+				brcm,pull = <0>; /* up */
+			};
+		};
+	};
+
+
+	fragment@2 {
+		target-path = "/";
+		__overlay__ {
+			voicehat-codec {
+				#sound-dai-cells = <0>;
+				compatible = "google,voicehat";
+				pinctrl-names = "default";
+				pinctrl-0 = <&i2saudio_pins>;
+				sdmode-gpios= <&gpio 4 0>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&sound>;
+		__overlay__ {
+			compatible = "i2saudio,i2saudio-soundcard";
+			i2s-controller = <&i2s>;
+			status = "okay";
+		};
+	};
+};
