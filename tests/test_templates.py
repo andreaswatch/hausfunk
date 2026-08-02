@@ -24,11 +24,12 @@ class TestTemplateRender(unittest.TestCase):
 
     def test_service_template_rendered(self):
         out = _render("hausfunk-pi.service.j2", {
-            "install_dir": "/opt/hausfunk",
+            "binary_path": "/usr/local/bin/go2rtc",
+            "config_path": "/etc/hausfunk/go2rtc.yaml",
             "pi_user": "andreas",
             "uid": "1000",
         })
-        self.assertIn("ExecStart=/opt/hausfunk/go2rtc -config /opt/hausfunk/go2rtc.yaml", out)
+        self.assertIn("ExecStart=/usr/local/bin/go2rtc -config /etc/hausfunk/go2rtc.yaml", out)
         self.assertIn("User=andreas", out)
         self.assertIn("SupplementaryGroups=video", out)
         self.assertIn("Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native", out)

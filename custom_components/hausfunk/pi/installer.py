@@ -17,8 +17,9 @@ from ..const import (
     CONF_WIDTH,
     GO2RTC_RELEASE_URL,
     PI_BINARY,
+    PI_BIN_DIR,
     PI_CONFIG,
-    PI_INSTALL_DIR,
+    PI_ETC_DIR,
     PI_SERVICE_NAME,
 )
 from .ssh import PiCommandError, PiConnectionError, PiSSH
@@ -37,8 +38,8 @@ ARCH_MAP = {
 }
 
 SERVICE_PATH = f"/etc/systemd/system/{PI_SERVICE_NAME}.service"
-BINARY_PATH = f"{PI_INSTALL_DIR}/{PI_BINARY}"
-CONFIG_PATH = f"{PI_INSTALL_DIR}/{PI_CONFIG}"
+BINARY_PATH = f"{PI_BIN_DIR}/{PI_BINARY}"
+CONFIG_PATH = f"{PI_ETC_DIR}/{PI_CONFIG}"
 
 
 def _render(template_path: str, values: dict) -> str:
@@ -118,13 +119,13 @@ class HausfunkInstaller:
         url = GO2RTC_RELEASE_URL.format(version=version, arch=arch)
         await self._ensure_dir()
         status, _out, err = await self._sudo(
-            f"curl -fsSL -o {BINARY_PATH} {url} && chmod +x {BINARY_PATH}"
+            f"curl -fsSL -o {BINARY_PATH} {url} && chmod +x {BINARY_PATH} && test -x {BINARY_PATH}"
         )
         if status != 0:
             raise PiCommandError(f"Binary-Download fehlgeschlagen: {err}")
 
     async def _ensure_dir(self):
-        status, _out, err = await self._sudo(f"mkdir -p {PI_INSTALL_DIR}")
+        status, _out, err = await self._sudo(f"mkdir -p {PI_ETC_DIR}")
         if status != 0:
             raise PiCommandError(f"mkdir fehlgeschlagen: {err}")
 
@@ -147,7 +148,8 @@ class HausfunkInstaller:
             raise PiCommandError("id -u fehlgeschlagen")
         uid = out.strip()
         content = _render("hausfunk-pi.service.j2", {
-            "install_dir": PI_INSTALL_DIR,
+            "binary_path": BINARY_PATH,
+            "config_path": CONFIG_PATH,
             "pi_user": self.config[CONF_PI_USERNAME],
             "uid": uid,
         })

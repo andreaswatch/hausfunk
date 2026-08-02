@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart={{ install_dir }}/go2rtc -config {{ install_dir }}/go2rtc.yaml
+ExecStart={{ binary_path }} -config {{ config_path }}
 Restart=always
 RestartSec=3
 User={{ pi_user }}
