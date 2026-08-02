@@ -42,6 +42,8 @@ update_coordinator_mock.DataUpdateCoordinator = DummyDataUpdateCoordinator
 update_coordinator_mock.CoordinatorEntity = DummyCoordinatorEntity
 update_coordinator_mock.UpdateFailed = Exception
 helpers_mock.update_coordinator = update_coordinator_mock
+entity_platform_mock = MagicMock()
+helpers_mock.entity_platform = entity_platform_mock
 device_registry_mock = MagicMock()
 device_registry_mock.DeviceInfo = dict
 
@@ -51,8 +53,75 @@ sys.modules["homeassistant.config_entries"] = config_entries_mock
 sys.modules["homeassistant.const"] = const_mock
 sys.modules["homeassistant.helpers"] = helpers_mock
 sys.modules["homeassistant.helpers.update_coordinator"] = update_coordinator_mock
+sys.modules["homeassistant.helpers.entity_platform"] = entity_platform_mock
 sys.modules["homeassistant.helpers.device_registry"] = device_registry_mock
 sys.modules["homeassistant.components"] = MagicMock()
+
+# Entity base classes for the platform modules
+class DummyEntity:
+    _attr_has_entity_name = False
+    _attr_unique_id = None
+    _attr_device_info = None
+    _attr_name = None
+    _attr_icon = None
+
+    def __init__(self):
+        for attr in ("_attr_has_entity_name", "_attr_unique_id",
+                     "_attr_device_info", "_attr_name", "_attr_icon"):
+            setattr(self, attr, getattr(type(self), attr, None))
+
+    @property
+    def device_info(self):
+        return self._attr_device_info
+
+    @property
+    def unique_id(self):
+        return self._attr_unique_id
+
+    @property
+    def name(self):
+        return self._attr_name
+
+    @property
+    def icon(self):
+        return self._attr_icon
+
+    @property
+    def has_entity_name(self):
+        return self._attr_has_entity_name
+
+
+class DummyBinarySensorEntity(DummyEntity):
+    def __init__(self):
+        super().__init__()
+        self._attr_is_on = None
+
+    @property
+    def is_on(self):
+        return self._attr_is_on
+
+
+class DummySwitchEntity(DummyEntity):
+    def __init__(self):
+        super().__init__()
+        self._attr_is_on = None
+
+    @property
+    def is_on(self):
+        return self._attr_is_on
+
+    async def async_turn_on(self, **kwargs):
+        pass
+
+    async def async_turn_off(self, **kwargs):
+        pass
+
+
+components_mock = MagicMock()
+components_mock.binary_sensor.BinarySensorEntity = DummyBinarySensorEntity
+components_mock.switch.SwitchEntity = DummySwitchEntity
+sys.modules["homeassistant.components.binary_sensor"] = components_mock.binary_sensor
+sys.modules["homeassistant.components.switch"] = components_mock.switch
 
 # Third-party libs used by the component that are not installed locally
 sys.modules["asyncssh"] = MagicMock()
