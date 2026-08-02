@@ -50,9 +50,15 @@ class PiSSH:
     @property
     def host_key_fingerprint(self):
         """SHA256 host-key fingerprint (empty string if unknown)."""
-        if self._conn is None or self._conn.host_key is None:
+        if self._conn is None:
             return ""
-        return self._conn.host_key.fingerprint.hash
+        try:
+            key = self._conn.get_server_host_key()
+            if key is None:
+                return ""
+            return key.get_fingerprint()
+        except (AttributeError, OSError):
+            return ""
 
     async def run(self, command, input_data=None, timeout=60):
         """Run a command and return (exit_status, stdout, stderr)."""
