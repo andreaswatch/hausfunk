@@ -10,7 +10,9 @@ from homeassistant.core import callback
 from .const import (
     CONF_AUDIO_GAIN,
     CONF_FPS,
+    CONF_GO2RTC_HOST,
     CONF_GO2RTC_PASSWORD,
+    CONF_GO2RTC_RTSP_PORT,
     CONF_GO2RTC_URL,
     CONF_GO2RTC_USERNAME,
     CONF_GO2RTC_VERSION,
@@ -26,6 +28,8 @@ from .const import (
     CONF_WIDTH,
     DEFAULT_AUDIO_GAIN,
     DEFAULT_FPS,
+    DEFAULT_GO2RTC_HOST,
+    DEFAULT_GO2RTC_RTSP_PORT,
     DEFAULT_GO2RTC_URL,
     DEFAULT_GO2RTC_VERSION,
     DEFAULT_HEIGHT,
@@ -67,6 +71,8 @@ GO2RTC_SCHEMA = vol.Schema(
         vol.Optional(CONF_GO2RTC_USERNAME, default=""): str,
         vol.Optional(CONF_GO2RTC_PASSWORD, default=""): str,
         vol.Required(CONF_GO2RTC_VERSION, default=DEFAULT_GO2RTC_VERSION): str,
+        vol.Required(CONF_GO2RTC_HOST, default=DEFAULT_GO2RTC_HOST): str,
+        vol.Required(CONF_GO2RTC_RTSP_PORT, default=DEFAULT_GO2RTC_RTSP_PORT): int,
     }
 )
 
@@ -186,6 +192,8 @@ class HausfunkOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_GO2RTC_USERNAME, default=current.get(CONF_GO2RTC_USERNAME, "")): str,
                 vol.Optional(CONF_GO2RTC_PASSWORD, default=current.get(CONF_GO2RTC_PASSWORD, "")): str,
                 vol.Required(CONF_GO2RTC_VERSION, default=current.get(CONF_GO2RTC_VERSION, DEFAULT_GO2RTC_VERSION)): str,
+                vol.Required(CONF_GO2RTC_HOST, default=current.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST)): str,
+                vol.Required(CONF_GO2RTC_RTSP_PORT, default=current.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT)): int,
                 vol.Required(CONF_INSTALL_NOW, default=False): bool,
             }
         )

@@ -1,0 +1,67 @@
+"""Camera for Hausfunk: exposes the go2rtc-registered stream as a camera entity."""
+
+from homeassistant.components.camera import CameraEntity, CameraEntityFeature
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import (
+    CONF_GO2RTC_HOST,
+    CONF_GO2RTC_RTSP_PORT,
+    CONF_PI_HOST,
+    CONF_STREAM_NAME,
+    DEFAULT_GO2RTC_HOST,
+    DEFAULT_GO2RTC_RTSP_PORT,
+    DOMAIN,
+)
+from .coordinator import HausfunkCoordinator
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([HausfunkCamera(coordinator)])
+
+
+class HausfunkCamera(CoordinatorEntity, CameraEntity):
+    """Camera backed by the go2rtc-registered stream on the HA host.
+
+    The stream is registered in the HA-local go2rtc instance (see
+    HausfunkCoordinator.register_stream / persist_stream). This entity only
+    exposes a stream_source that points at the HA go2rtc RTSP server, so the
+    browser reaches the Pi exclusively via the HA go2rtc WebRTC proxy and
+    never talks to the Pi directly.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: HausfunkCoordinator):
+        super().__init__(coordinator)
+        self._attr_name = "Kamera"
+        self._attr_icon = "mdi:cctv"
+        self._attr_unique_id = "hausfunk_camera"
+        self._attr_supported_features = CameraEntityFeature.STREAM
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
+        )
+
+    @property
+    def available(self) -> bool:
+        return bool(
+            self.coordinator.data and self.coordinator.data.get("pi_reachable")
+        )
+
+    @property
+    def stream_source(self) -> str | None:
+        if not self.available:
+            return None
+        config = self.coordinator.config
+        host = config.get(CONF_GO2RTC_HOST) or DEFAULT_GO2RTC_HOST
+        port = config.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT)
+        name = config[CONF_STREAM_NAME]
+        return f"rtsp://{host}:{port}/{name}"

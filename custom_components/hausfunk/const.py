@@ -5,14 +5,17 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 DOMAIN = "hausfunk"
 NAME = "Hausfunk"
 
-PLATFORMS = ["binary_sensor", "switch"]
+PLATFORMS = ["binary_sensor", "switch", "camera"]
 
 # Defaults
 DEFAULT_SSH_PORT = 22
 DEFAULT_RTSP_PORT = 8554
 DEFAULT_STREAM_NAME = "tuer"
-DEFAULT_GO2RTC_URL = "http://localhost:1984"
-DEFAULT_GO2RTC_VERSION = "v1.9.13"
+DEFAULT_GO2RTC_URL = "http://localhost:11984"
+DEFAULT_GO2RTC_VERSION = "v1.9.14"
+# HA's built-in / add-on go2rtc prefixes ports with 1 by default
+DEFAULT_GO2RTC_HOST = "127.0.0.1"
+DEFAULT_GO2RTC_RTSP_PORT = 18554
 
 # Camera defaults
 DEFAULT_WIDTH = 320
@@ -48,4 +51,6 @@ CONF_GO2RTC_URL = "go2rtc_url"
 CONF_GO2RTC_USERNAME = "go2rtc_username"
 CONF_GO2RTC_PASSWORD = "go2rtc_password"
 CONF_GO2RTC_VERSION = "go2rtc_version"
+CONF_GO2RTC_HOST = "go2rtc_host"
+CONF_GO2RTC_RTSP_PORT = "go2rtc_rtsp_port"
 CONF_INSTALL_NOW = "install_now"

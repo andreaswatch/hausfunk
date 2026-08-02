@@ -25,10 +25,16 @@ Pi Zero 2W ──(go2rtc, RTSP server :8554)──▶ HA go2rtc ──(WebRTC)�
   it is a lightweight RTSP relay, so the Pi's CPU/RAM load stays low.
 - Home Assistant's existing go2rtc pulls the stream via
   `rtsp://<pi>:8554/<name>#backchannel=1` and provides the low-latency WebRTC
-  front end. The [go2rtc integration](https://www.home-assistant.io/integrations/go2rtc/)
-  turns it into a camera entity.
+  front end. The integration registers the stream in the HA go2rtc instance
+  via its API and persists it to go2rtc's config.
+- **Camera entity:** the integration exposes its own `camera.<stream_name>`
+  entity whose `stream_source` points at the HA-local go2rtc RTSP server
+  (`rtsp://127.0.0.1:18554/<name>`), so the browser reaches the Pi only via
+  the HA go2rtc WebRTC proxy — never directly. No Generic Camera needed.
 - **Two-way audio** works end to end: browser → HA go2rtc → RTSP backchannel
-  (interleaved) → Pi go2rtc → `exec` stdin → ffmpeg → speaker.
+  → Pi go2rtc → `exec` stdin → ffmpeg → speaker. For the talk-back button use
+  the [advanced-camera-card](https://github.com/dermotduffy/advanced-camera-card)
+  with the registered stream name and `backchannel`.
 
 ## Features
 
@@ -77,13 +83,18 @@ Pi Zero 2W ──(go2rtc, RTSP server :8554)──▶ HA go2rtc ──(WebRTC)�
 2. **Connect Pi:** Pi IP address, SSH port, SSH username, SSH password
    (and sudo password if different from the SSH password).
 3. **Camera and stream:** stream name, RTSP port, width, height, fps, mic gain.
-4. **go2rtc:** URL of the HA go2rtc instance, optional credentials, go2rtc
-   version to install on the Pi.
+4. **go2rtc:** URL of the HA go2rtc instance (e.g. `http://localhost:11984`
+   with the HA add-on / built-in go2rtc), optional credentials, go2rtc
+   version to install on the Pi, plus the HA go2rtc RTSP host and port
+   (defaults `127.0.0.1` / `18554` — the add-on prefixes ports with `1`).
+
+   If you run a standalone go2rtc without the `1` prefix, set the RTSP port
+   to `8554` instead.
 5. **Install:** optionally set up the Pi right away (downloads go2rtc, writes
    config + service, enables it).
 
-Afterwards the camera entity appears (via the go2rtc integration) and the stream
-`<stream_name>` is available in go2rtc.
+Afterwards the `camera.<stream_name>` entity appears on the Hausfunk Pi device
+and the stream `<stream_name>` is registered in HA go2rtc.
 
 ## Services
 
@@ -98,6 +109,7 @@ Afterwards the camera entity appears (via the go2rtc integration) and the stream
 
 | Entity | Description |
 |--------|-------------|
+| `camera.<stream_name>` | Camera stream proxied through HA go2rtc (WebRTC, backchannel) |
 | `binary_sensor.hausfunk_pi_erreichbar` | Pi reachable (RTSP port probe) |
 | `binary_sensor.hausfunk_stream_aktiv` | Stream registered in go2rtc |
 | `switch.hausfunk_stream_registriert` | Toggle stream registration |

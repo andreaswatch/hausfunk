@@ -23,7 +23,7 @@ class TestConst(unittest.TestCase):
         self.assertTrue(DEFAULT_GO2RTC_VERSION.startswith("v1.9"))
 
     def test_platforms(self):
-        self.assertEqual(set(PLATFORMS), {"binary_sensor", "switch"})
+        self.assertEqual(set(PLATFORMS), {"binary_sensor", "switch", "camera"})
 
 
 if __name__ == "__main__":

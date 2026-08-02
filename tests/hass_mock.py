@@ -120,8 +120,31 @@ class DummySwitchEntity(DummyEntity):
 components_mock = MagicMock()
 components_mock.binary_sensor.BinarySensorEntity = DummyBinarySensorEntity
 components_mock.switch.SwitchEntity = DummySwitchEntity
+
+
+class DummyCameraEntity(DummyEntity):
+    _attr_supported_features = 0
+
+    def __init__(self):
+        super().__init__()
+        self._stream_source = None
+
+    @property
+    def stream_source(self):
+        return self._stream_source
+
+    @property
+    def supported_features(self):
+        return self._attr_supported_features
+
+
+components_mock.camera.CameraEntity = DummyCameraEntity
+components_mock.camera.CameraEntityFeature = type(
+    "CameraEntityFeature", (), {"STREAM": 1}
+)
 sys.modules["homeassistant.components.binary_sensor"] = components_mock.binary_sensor
 sys.modules["homeassistant.components.switch"] = components_mock.switch
+sys.modules["homeassistant.components.camera"] = components_mock.camera
 
 # Third-party libs used by the component that are not installed locally
 sys.modules["asyncssh"] = MagicMock()

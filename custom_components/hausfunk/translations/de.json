@@ -29,7 +29,9 @@
           "go2rtc_url": "go2rtc URL",
           "go2rtc_username": "Benutzer (optional)",
           "go2rtc_password": "Passwort (optional)",
-          "go2rtc_version": "go2rtc-Version"
+          "go2rtc_version": "go2rtc-Version",
+          "go2rtc_host": "HA go2rtc RTSP-Host",
+          "go2rtc_rtsp_port": "HA go2rtc RTSP-Port"
         }
       },
       "install": {
