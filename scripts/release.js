@@ -64,7 +64,7 @@ function main() {
 
   // 3. Create zip archive
   console.log('\x1b[32m[3/6] Packaging integration zip archive...\x1b[0m');
-  run(`zip -r ${ZIP_NAME} custom_components/hausfunk`);
+  run(`zip -r ${ZIP_NAME} custom_components/hausfunk -x '*/__pycache__/*' '*/__pycache__'`);
 
   // 4. Git commit and tag
   console.log('\x1b[32m[4/6] Committing changes and creating git tag...\x1b[0m');
