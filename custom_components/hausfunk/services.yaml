@@ -1,0 +1,15 @@
+setup_pi:
+  name: Pi einrichten
+  description: Installiert oder aktualisiert die Pi-Seite (go2rtc, Config, systemd-Service) per SSH.
+
+update_pi:
+  name: Pi aktualisieren
+  description: Aktualisiert das go2rtc-Binary auf der Pi auf die konfigurierte Version und startet den Dienst neu.
+
+register_stream:
+  name: Stream registrieren
+  description: Registriert den Hausfunk-Stream in der go2rtc-Instanz von Home Assistant.
+
+remove_stream:
+  name: Stream entfernen
+  description: Entfernt den Hausfunk-Stream aus der go2rtc-Instanz.

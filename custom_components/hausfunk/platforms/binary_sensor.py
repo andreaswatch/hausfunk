@@ -1,0 +1,42 @@
+"""Binary sensors for Hausfunk: Pi reachability and stream state."""
+
+from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from ..const import DOMAIN
+from ..coordinator import HausfunkCoordinator
+
+SENSORS = (
+    ("pi_reachable", "Pi erreichbar", "mdi:raspberry-pi"),
+    ("stream_active", "Stream aktiv", "mdi:cast-connected"),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities(
+        HausfunkBinarySensor(coordinator, key, name, icon)
+        for key, name, icon in SENSORS
+    )
+
+
+class HausfunkBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Binary sensor backed by the coordinator."""
+
+    def __init__(self, coordinator: HausfunkCoordinator, key: str, name: str, icon: str):
+        super().__init__(coordinator)
+        self._key = key
+        self._attr_name = f"Hausfunk {name}"
+        self._attr_icon = icon
+        self._attr_unique_id = f"hausfunk_{key}"
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.coordinator.data.get(self._key) if self.coordinator.data else None

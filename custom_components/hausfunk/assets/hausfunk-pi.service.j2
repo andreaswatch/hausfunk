@@ -1,0 +1,16 @@
+[Unit]
+Description=Hausfunk Pi (go2rtc)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ install_dir }}/go2rtc -config {{ install_dir }}/go2rtc.yaml
+Restart=always
+RestartSec=3
+User={{ pi_user }}
+SupplementaryGroups=video
+Environment=PULSE_SERVER=unix:/run/user/{{ uid }}/pulse/native
+Environment=XDG_RUNTIME_DIR=/run/user/{{ uid }}
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,52 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Hausfunk Pi",
+        "description": "SSH credentials for the Pi. Only used once for setup.",
+        "data": {
+          "host": "Pi IP address",
+          "port": "SSH port",
+          "username": "SSH username",
+          "password": "SSH password",
+          "sudo_password": "Sudo password (if different, optional)"
+        }
+      },
+      "stream": {
+        "title": "Camera and stream",
+        "data": {
+          "stream_name": "Stream name",
+          "rtsp_port": "RTSP port",
+          "width": "Width",
+          "height": "Height",
+          "fps": "Frames per second",
+          "audio_gain": "Microphone gain"
+        }
+      },
+      "go2rtc": {
+        "title": "go2rtc (Home Assistant)",
+        "data": {
+          "go2rtc_url": "go2rtc URL",
+          "go2rtc_username": "Username (optional)",
+          "go2rtc_password": "Password (optional)",
+          "go2rtc_version": "go2rtc version"
+        }
+      },
+      "install": {
+        "title": "Set up the Pi",
+        "description": "The integration will now install go2rtc on the Pi and enable the service.",
+        "data": {
+          "install_now": "Set up the Pi now"
+        }
+      },
+      "init": {
+        "title": "Hausfunk options"
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the Pi. Check IP, username and password.",
+      "cannot_detect_arch": "Could not determine the Pi architecture.",
+      "install_failed": "Pi setup failed. See the logs."
+    }
+  }
+}

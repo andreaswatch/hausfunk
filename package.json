@@ -1,0 +1,32 @@
+{
+  "name": "hausfunk",
+  "version": "0.1.0",
+  "description": "Home Assistant integration for a door intercom (Türsprechanlage) running go2rtc on a Raspberry Pi Zero 2W",
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests",
+    "release": "node scripts/release.js",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major",
+    "deploy": "node scripts/release.js patch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreaswatch/sprechanlage-pi-server.git"
+  },
+  "keywords": [
+    "homeassistant",
+    "intercom",
+    "doorbell",
+    "go2rtc",
+    "raspberrypi",
+    "webrtc",
+    "hacs"
+  ],
+  "author": "andreas",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/andreaswatch/sprechanlage-pi-server/issues"
+  },
+  "homepage": "https://github.com/andreaswatch/sprechanlage-pi-server#readme"
+}

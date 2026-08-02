@@ -1,135 +1,116 @@
-# Intercom — Pi Zero 2W + go2rtc on Server
+# Hausfunk
 
-**Architecture:** Pi Zero 2W (192.168.178.11) handles only camera+audio capture.
-go2rtc runs on the faster server (192.168.178.99) and provides WebRTC+backchannel.
+![Hausfunk Icon](icon.png)
+
+A Home Assistant integration for a **door intercom (Türsprechanlage)** built around
+a Raspberry Pi Zero 2W (camera + microphone + speaker) and the go2rtc instance
+that Home Assistant already runs.
+
+The integration provisions the Pi once over SSH and then talks to it exclusively
+over standard protocols (RTSP + go2rtc). No SSH in steady state.
+
+> **Status:** Early development. Tested by the author against his own door
+> intercom setup. Use at your own risk.
+
+## Architecture
 
 ```
-Browser (WebRTC) ────▶ FRITZBox ──▶ NPM ──▶ Server go2rtc (:1984/:8555)
-                                                 │
-                    ┌────────────────────────────┤
-                    │ raw H264 pipe              │ RTSP push (opus)
-                    │ backchannel (alaw TCP:5555)│
-                    ▼                            ▼
-                 ┌─────────────────────────────────┐
-                 │  Pi Zero 2W (192.168.178.11)    │
-                 │  rpicam + PulseAudio            │
-                 └─────────────────────────────────┘
+Pi Zero 2W ──(go2rtc, RTSP server :8554)──▶ HA go2rtc ──(WebRTC)──▶ Browser / Lovelace
+  ├─ rpicam-vid … -o -                     # H264 video (hardware)
+  ├─ ffmpeg pulse → Opus → {output}        # microphone
+  └─ ffmpeg alaw ← pipe:0 #backchannel=1   # speaker (talk)
 ```
+
+- The Pi runs a **minimal go2rtc without WebRTC** (no `webrtc:`/`api:` modules) —
+  it is a lightweight RTSP relay, so the Pi's CPU/RAM load stays low.
+- Home Assistant's existing go2rtc pulls the stream via
+  `rtsp://<pi>:8554/<name>#backchannel=1` and provides the low-latency WebRTC
+  front end. The [go2rtc integration](https://www.home-assistant.io/integrations/go2rtc/)
+  turns it into a camera entity.
+- **Two-way audio** works end to end: browser → HA go2rtc → RTSP backchannel
+  (interleaved) → Pi go2rtc → `exec` stdin → ffmpeg → speaker.
+
+## Features
+
+- **One-time SSH setup** through the integration: installs go2rtc, writes config +
+  systemd unit, enables the service. Afterwards no SSH is used.
+- **Everything configurable** via the config/options flow: Pi IP, username,
+  password, sudo password, ports, stream name, resolution, fps, mic gain,
+  go2rtc URL and version.
+- **Self-contained Pi**: the Pi brings its own dependencies (go2rtc binary,
+  `ffmpeg` if missing). One binary, one config, one systemd unit, one port.
+- **Stream auto-registration**: the integration registers the stream in the
+  HA go2rtc instance via its API and persists it to go2rtc's config.
+- **Services** to re-run setup, update go2rtc, register/remove the stream.
 
 ## Prerequisites
 
-- **Pi Zero 2W** with Pi Camera, Google VoiceHAT (mic+speaker), Debian Bookworm
-- **Server** running Fedora 39+ x86_64 (or Docker), go2rtc runs natively
-- **Nginx Proxy Manager** for HTTPS (on the server, ports 80/443)
-- **FRITZBox** port-forward 8555 UDP for WebRTC
-- **sshpass** on the server for SSH to Pi (`dnf install -y sshpass`, Pi has it via `apt`)
-- **socat** on the Pi for the backchannel receiver (`apt install -y socat`)
+- **Pi Zero 2W** (or similar) with Pi Camera, Google VoiceHAT (mic + speaker),
+  Debian/Raspberry Pi OS (Bookworm), SSH enabled, user with sudo rights.
+- **Home Assistant** (2024.11+) with a running **go2rtc** instance reachable at
+  `http://localhost:1984` (e.g. the [go2rtc add-on](https://github.com/AlexxIT/go2rtc)
+  or the HA go2rtc integration).
+- go2rtc version on the Pi must support RTSP server backchannel
+  (**≥ v1.9.x**, [PR #1432](https://github.com/AlexxIT/go2rtc/pull/1432)).
 
-## Step 1 — Set up the Pi Zero 2W
+## Installation
+
+### Method 1: HACS
+
+1. Open Home Assistant and go to **HACS**.
+2. Click the 3 dots in the top right and select **Custom repositories**.
+3. Add the URL of this GitHub repository and select the category `Integration`.
+4. Click **Install** on the `Hausfunk` integration.
+5. Restart Home Assistant.
+
+### Method 2: Manual
+
+1. Download the latest release.
+2. Copy the `custom_components/hausfunk` folder into your HA
+   `config/custom_components` directory.
+3. Restart Home Assistant.
+
+## Configuration
+
+1. Go to **Settings → Devices & Services** and click **Add Integration**, search
+   for "Hausfunk".
+2. **Connect Pi:** Pi IP address, SSH port, SSH username, SSH password
+   (and sudo password if different from the SSH password).
+3. **Camera and stream:** stream name, RTSP port, width, height, fps, mic gain.
+4. **go2rtc:** URL of the HA go2rtc instance, optional credentials, go2rtc
+   version to install on the Pi.
+5. **Install:** optionally set up the Pi right away (downloads go2rtc, writes
+   config + service, enables it).
+
+Afterwards the camera entity appears (via the go2rtc integration) and the stream
+`<stream_name>` is available in go2rtc.
+
+## Services
+
+| Service | Description |
+|---------|-------------|
+| `hausfunk.setup_pi` | (Re)installs or updates the Pi side over SSH |
+| `hausfunk.update_pi` | Updates the go2rtc binary to the configured version |
+| `hausfunk.register_stream` | (Re)registers the stream in the HA go2rtc instance |
+| `hausfunk.remove_stream` | Removes the stream from the HA go2rtc instance |
+
+## Entities
+
+| Entity | Description |
+|--------|-------------|
+| `binary_sensor.hausfunk_pi_erreichbar` | Pi reachable (RTSP port probe) |
+| `binary_sensor.hausfunk_stream_aktiv` | Stream registered in go2rtc |
+| `switch.hausfunk_stream_registriert` | Toggle stream registration |
+
+## Development
 
 ```bash
-# === 1.1 Install dependencies ===
-sudo apt update && sudo apt install -y socat
-
-# === 1.2 Copy Pi scripts to /opt ===
-sudo cp pi/rpicam-stream.sh /opt/ && sudo chmod +x /opt/rpicam-stream.sh
-sudo cp pi/audio-push.sh    /opt/ && sudo chmod +x /opt/audio-push.sh
-sudo cp pi/bc-play.sh       /opt/ && sudo chmod +x /opt/bc-play.sh
-
-# === 1.3 Backchannel receiver (TCP:5555 -> ffmpeg -> speaker) ===
-sudo cp pi/bc-receiver.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now bc-receiver
-
-# === 1.4 PulseAudio volumes ===
-mkdir -p ~/.config/pulse
-cp pi/default.pa ~/.config/pulse/default.pa
-systemctl --user restart pulseaudio
+npm test            # run unit tests
+npm run release     # bump patch, tag, push, create GitHub release
+npm run release:minor
+npm run release:major
 ```
 
-**Verify:** `systemctl is-active bc-receiver` → `active`  
-**Verify:** `ss -tlnp | grep 5555` → `LISTEN`
+## License
 
-## Step 2 — Set up the Server
-
-```bash
-# === 2.1 Download go2rtc (latest release) ===
-sudo curl -sL -o /opt/go2rtc \
-  https://github.com/AlexxIT/go2rtc/releases/download/v1.9.14/go2rtc_linux_amd64
-sudo chmod +x /opt/go2rtc
-
-# === 2.2 go2rtc configuration ===
-sudo cp server/go2rtc.yaml /opt/go2rtc.yaml
-```
-
-Edit the server IP in `go2rtc.yaml` if needed (line `192.168.178.99` → your server IP).
-
-```bash
-# === 2.3 Server scripts (SSH wrappers to Pi) ===
-sudo cp server/src-video.sh       /opt/ && sudo chmod +x /opt/src-video.sh
-sudo cp server/src-audio.sh       /opt/ && sudo chmod +x /opt/src-audio.sh
-sudo cp server/src-backchannel.sh /opt/ && sudo chmod +x /opt/src-backchannel.sh
-```
-
-**IMPORTANT:** Replace `PASSWORD` in all three `src-*.sh` scripts with your Pi password:
-```
-exec sshpass -p 'YOUR_PI_PASSWORD' ssh ...
-```
-
-```bash
-# === 2.4 go2rtc systemd service ===
-sudo cp server/go2rtc.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now go2rtc
-
-# === 2.5 Firewall (if active) ===
-sudo firewall-cmd --add-port=1984/tcp --add-port=8554/tcp \
-  --add-port=8555/tcp --add-port=8555/udp --permanent
-sudo firewall-cmd --reload
-```
-
-**Verify:** `systemctl is-active go2rtc` → `active`  
-**Verify:** `curl -s http://localhost:1984/api/streams | python3 -m json.tool | grep tuerkamera` → should show the stream
-
-## Step 3 — Network
-
-### 3.1 Nginx Proxy Manager (http://server:81)
-
-Proxy Host for `sprechanlage.moers.webredirect.org`:
-- **Forward:** `http://192.168.178.99:1984`  *(was: 192.168.178.11:1984)*
-- ✅ SSL enforced (Let's Encrypt)
-- ✅ WebSocket support
-- ✅ HTTP/2
-- HSTS enabled, `proxy_buffering off`, etc.
-
-### 3.2 FRITZBox (http://fritz.box)
-
-Port-forwarding `go2rtc-webrtc`:
-- **Internal host:** `192.168.178.99` *(was: 192.168.178.11)*
-- Protocol: TCP + UDP, port 8555
-
-## Step 4 — Test
-
-Open in browser:
-
-```
-https://sprechanlage.moers.webredirect.org/webrtc.html?src=tuerkamera&media=video+audio+microphone
-```
-
-## Data Flow
-
-```
-Video:  rpicam ──raw h264──▶ SSH ──▶ Server go2rtc ──WebRTC──▶ Browser
-Audio:  Pulse ──ffmpeg/opus──▶ RTSP push ──▶ Server go2rtc ──WebRTC──▶ Browser
-Talk:   Browser ──WebRTC──▶ Server go2rtc ──SSH/socat──▶ TCP:5555 ──▶ ffmpeg ──▶ Pulse ▶ Speaker
-```
-
-## Troubleshooting
-
-| Problem | Check |
-|---------|-------|
-| No video/audio | `ssh andreas@192.168.178.11 'ps aux \| grep rpicam'` — is rpicam-vid running? |
-| No audio Pi→Browser | `sudo journalctl -u go2rtc -f` on server — errors from audio-push.sh? |
-| No audio Browser→Pi | `ss -tn \| grep 5555` on Pi — TCP connection from server? |
-| Backchannel silent | `sudo journalctl -u bc-receiver -f` on Pi — socat/ffmpeg errors? |
-| PULSE_SERVER errors | `sudo journalctl -u bc-receiver` — environment variables set? |
+Provided "as is". Feel free to fork, adapt, and use it in your own setup.
