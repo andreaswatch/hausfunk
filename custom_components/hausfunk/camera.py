@@ -1,6 +1,6 @@
 """Camera for Hausfunk: exposes the go2rtc-registered stream as a camera entity."""
 
-from homeassistant.components.camera import CameraEntity, CameraEntityFeature
+from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -28,7 +28,7 @@ async def async_setup_entry(
     async_add_entities([HausfunkCamera(coordinator)])
 
 
-class HausfunkCamera(CoordinatorEntity, CameraEntity):
+class HausfunkCamera(CoordinatorEntity, Camera):
     """Camera backed by the go2rtc-registered stream on the HA host.
 
     The stream is registered in the HA-local go2rtc instance (see
@@ -42,6 +42,7 @@ class HausfunkCamera(CoordinatorEntity, CameraEntity):
 
     def __init__(self, coordinator: HausfunkCoordinator):
         super().__init__(coordinator)
+        Camera.__init__(self)
         self._attr_name = "Kamera"
         self._attr_icon = "mdi:cctv"
         self._attr_unique_id = "hausfunk_camera"

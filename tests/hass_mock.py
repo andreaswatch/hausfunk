@@ -138,7 +138,7 @@ class DummyCameraEntity(DummyEntity):
         return self._attr_supported_features
 
 
-components_mock.camera.CameraEntity = DummyCameraEntity
+components_mock.camera.Camera = DummyCameraEntity
 components_mock.camera.CameraEntityFeature = type(
     "CameraEntityFeature", (), {"STREAM": 1}
 )
