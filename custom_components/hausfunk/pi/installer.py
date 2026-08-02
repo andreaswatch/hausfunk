@@ -20,6 +20,7 @@ from ..const import (
     PI_CONFIG,
     PI_SERVICE_NAME,
     PI_SUBDIR,
+    PI_USER_SERVICE_DIR,
 )
 from .ssh import PiCommandError, PiConnectionError, PiSSH
 
@@ -36,7 +37,7 @@ ARCH_MAP = {
     "i686": "i386",
 }
 
-SERVICE_PATH = f"/etc/systemd/system/{PI_SERVICE_NAME}.service"
+SERVICE_PATH_TEMPLATE = "{home_dir}/{service_dir}/{service_name}.service"
 
 
 def _render(template_path: str, values: dict) -> str:
@@ -162,18 +163,21 @@ class HausfunkInstaller:
             "pi_user": self.config[CONF_PI_USERNAME],
             "uid": uid,
         })
-        await self.ssh.write_file(
-            SERVICE_PATH, content, sudo=True, sudo_password=self._sudo_password
+        service_path = SERVICE_PATH_TEMPLATE.format(
+            home_dir=self._home_dir,
+            service_dir=PI_USER_SERVICE_DIR,
+            service_name=PI_SERVICE_NAME,
         )
+        await self.ssh.write_file(service_path, content)
 
     async def _enable_service(self):
-        status, _out, err = await self._sudo(
-            f"systemctl daemon-reload && systemctl enable --now {PI_SERVICE_NAME}"
+        status, _out, err = await self.ssh.run(
+            f"systemctl --user daemon-reload && systemctl --user enable --now {PI_SERVICE_NAME}"
         )
         if status != 0:
             raise PiCommandError(f"Service-Aktivierung fehlgeschlagen: {err}")
-        status, out, _err = await self._sudo(
-            f"systemctl is-active {PI_SERVICE_NAME}"
+        status, out, _err = await self.ssh.run(
+            f"systemctl --user is-active {PI_SERVICE_NAME}"
         )
         if status != 0 or "active" not in out:
             raise PiCommandError(f"Service nicht aktiv: {out.strip()}")

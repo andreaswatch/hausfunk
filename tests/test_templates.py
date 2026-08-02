@@ -30,8 +30,8 @@ class TestTemplateRender(unittest.TestCase):
             "uid": "1000",
         })
         self.assertIn("ExecStart=/home/andreas/hausfunk/go2rtc -config /home/andreas/hausfunk/go2rtc.yaml", out)
-        self.assertIn("User=andreas", out)
-        self.assertIn("SupplementaryGroups=video", out)
+        self.assertNotIn("User=", out)  # User-Service, kein User= nötig
+        self.assertIn("WantedBy=default.target", out)
         self.assertIn("Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native", out)
         self.assertNotIn("{{", out)
 

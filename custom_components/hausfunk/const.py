@@ -25,6 +25,7 @@ PI_SERVICE_NAME = "hausfunk-pi"
 PI_BINARY = "go2rtc"
 PI_CONFIG = "go2rtc.yaml"
 PI_SUBDIR = "hausfunk"  # under user's home
+PI_USER_SERVICE_DIR = ".config/systemd/user"  # under user's home
 
 GO2RTC_RELEASE_URL = (
     "https://github.com/AlexxIT/go2rtc/releases/download/{version}/go2rtc_linux_{arch}"

@@ -7,10 +7,8 @@ Type=simple
 ExecStart={{ binary_path }} -config {{ config_path }}
 Restart=always
 RestartSec=3
-User={{ pi_user }}
-SupplementaryGroups=video
 Environment=PULSE_SERVER=unix:/run/user/{{ uid }}/pulse/native
 Environment=XDG_RUNTIME_DIR=/run/user/{{ uid }}
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
