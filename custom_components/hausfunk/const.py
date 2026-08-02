@@ -21,11 +21,10 @@ DEFAULT_FPS = 10
 DEFAULT_AUDIO_GAIN = 2.0
 
 # Pi-side paths
-PI_BIN_DIR = "/usr/local/bin"
-PI_ETC_DIR = "/etc/hausfunk"
 PI_SERVICE_NAME = "hausfunk-pi"
 PI_BINARY = "go2rtc"
 PI_CONFIG = "go2rtc.yaml"
+PI_SUBDIR = "hausfunk"  # under user's home
 
 GO2RTC_RELEASE_URL = (
     "https://github.com/AlexxIT/go2rtc/releases/download/{version}/go2rtc_linux_{arch}"

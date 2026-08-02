@@ -17,10 +17,9 @@ from ..const import (
     CONF_WIDTH,
     GO2RTC_RELEASE_URL,
     PI_BINARY,
-    PI_BIN_DIR,
     PI_CONFIG,
-    PI_ETC_DIR,
     PI_SERVICE_NAME,
+    PI_SUBDIR,
 )
 from .ssh import PiCommandError, PiConnectionError, PiSSH
 
@@ -38,8 +37,6 @@ ARCH_MAP = {
 }
 
 SERVICE_PATH = f"/etc/systemd/system/{PI_SERVICE_NAME}.service"
-BINARY_PATH = f"{PI_BIN_DIR}/{PI_BINARY}"
-CONFIG_PATH = f"{PI_ETC_DIR}/{PI_CONFIG}"
 
 
 def _render(template_path: str, values: dict) -> str:
@@ -58,16 +55,29 @@ class HausfunkInstaller:
         self.ssh = ssh
         self.config = config
         self._sudo_password: str | None = None
+        self._home_dir: str = ""
+        self._binary_path: str = ""
+        self._config_path: str = ""
 
     async def _sudo(self, command: str, timeout: int = 120):
         """Run a sudo command with the configured sudo password."""
         return await self.ssh.sudo(command, password=self._sudo_password, timeout=timeout)
+
+    async def _detect_home(self):
+        """Detect the user's home directory."""
+        status, out, _err = await self.ssh.run("echo $HOME")
+        if status != 0:
+            raise PiCommandError("Konnte Home-Verzeichnis nicht ermitteln")
+        self._home_dir = out.strip()
+        self._binary_path = f"{self._home_dir}/{PI_SUBDIR}/{PI_BINARY}"
+        self._config_path = f"{self._home_dir}/{PI_SUBDIR}/{PI_CONFIG}"
 
     async def install(self, password: str | None = None) -> str:
         """Run the full install. Returns a status message."""
         self._sudo_password = password
         try:
             await self.ssh.connect()
+            await self._detect_home()
             arch = await self._detect_arch()
             await self._ensure_ffmpeg()
             await self._download_binary(arch)
@@ -83,6 +93,7 @@ class HausfunkInstaller:
         self._sudo_password = password
         try:
             await self.ssh.connect()
+            await self._detect_home()
             arch = await self._detect_arch()
             await self._download_binary(arch)
             status, _out, err = await self._sudo(
@@ -118,14 +129,14 @@ class HausfunkInstaller:
         version = self.config[CONF_GO2RTC_VERSION]
         url = GO2RTC_RELEASE_URL.format(version=version, arch=arch)
         await self._ensure_dir()
-        status, _out, err = await self._sudo(
-            f"curl -fsSL -o {BINARY_PATH} {url} && chmod +x {BINARY_PATH} && test -x {BINARY_PATH}"
+        status, _out, err = await self.ssh.run(
+            f"curl -fsSL -o {self._binary_path} {url} && chmod +x {self._binary_path} && test -x {self._binary_path}"
         )
         if status != 0:
             raise PiCommandError(f"Binary-Download fehlgeschlagen: {err}")
 
     async def _ensure_dir(self):
-        status, _out, err = await self._sudo(f"mkdir -p {PI_ETC_DIR}")
+        status, _out, err = await self.ssh.run(f"mkdir -p {self._home_dir}/{PI_SUBDIR}")
         if status != 0:
             raise PiCommandError(f"mkdir fehlgeschlagen: {err}")
 
@@ -138,9 +149,7 @@ class HausfunkInstaller:
             "fps": self.config[CONF_FPS],
             "audio_gain": self.config[CONF_AUDIO_GAIN],
         })
-        await self.ssh.write_file(
-            CONFIG_PATH, content, sudo=True, sudo_password=self._sudo_password
-        )
+        await self.ssh.write_file(self._config_path, content)
 
     async def _write_service(self):
         status, out, _err = await self.ssh.run("id -u")
@@ -148,8 +157,8 @@ class HausfunkInstaller:
             raise PiCommandError("id -u fehlgeschlagen")
         uid = out.strip()
         content = _render("hausfunk-pi.service.j2", {
-            "binary_path": BINARY_PATH,
-            "config_path": CONFIG_PATH,
+            "binary_path": self._binary_path,
+            "config_path": self._config_path,
             "pi_user": self.config[CONF_PI_USERNAME],
             "uid": uid,
         })
