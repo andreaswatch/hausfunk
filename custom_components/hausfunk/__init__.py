@@ -53,14 +53,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         from .const import NAME
         
         device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            config_subentry_id=subentry_id,
-            identifiers={(DOMAIN, pi_id)},
-            manufacturer=NAME,
-            model="Pi + go2rtc",
-            name=f"Hausfunk Pi ({pi_id})",
-        )
+        device = device_registry.async_get_device(identifiers={(DOMAIN, pi_id)})
+        if device and device.config_subentry_id != subentry_id:
+            device_registry.async_update_device(
+                device.id,
+                new_config_subentry_id=subentry_id,
+            )
+        else:
+            device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                config_subentry_id=subentry_id,
+                identifiers={(DOMAIN, pi_id)},
+                manufacturer=NAME,
+                model="Pi + go2rtc",
+                name=f"Hausfunk Pi ({pi_id})",
+            )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 
