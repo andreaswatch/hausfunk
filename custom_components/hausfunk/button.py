@@ -42,17 +42,17 @@ async def async_setup_entry(
     """Set up buttons for all current Pi subentries and register a callback for new ones."""
     entry_data = hass.data[DOMAIN][entry.entry_id]
 
-    for coordinator in entry_data["coordinators"].values():
+    for subentry_id, coordinator in entry_data["coordinators"].items():
         async_add_entities(
-            HausfunkButton(coordinator, key, name, icon, action)
-            for key, name, icon, action in BUTTONS
+            [HausfunkButton(coordinator, key, name, icon, action) for key, name, icon, action in BUTTONS],
+            config_subentry_id=subentry_id,
         )
 
     @callback
     def _add_pi(coordinator: HausfunkCoordinator, subentry_id: str):
         async_add_entities(
-            HausfunkButton(coordinator, key, name, icon, action)
-            for key, name, icon, action in BUTTONS
+            [HausfunkButton(coordinator, key, name, icon, action) for key, name, icon, action in BUTTONS],
+            config_subentry_id=subentry_id,
         )
 
     entry_data["pi_add_callbacks"].append(_add_pi)

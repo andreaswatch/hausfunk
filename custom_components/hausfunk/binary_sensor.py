@@ -25,18 +25,18 @@ async def async_setup_entry(
     entry_data = hass.data[DOMAIN][entry.entry_id]
 
     # Add entities for already-loaded coordinators
-    for coordinator in entry_data["coordinators"].values():
+    for subentry_id, coordinator in entry_data["coordinators"].items():
         async_add_entities(
-            HausfunkBinarySensor(coordinator, key, name, icon)
-            for key, name, icon in SENSORS
+            [HausfunkBinarySensor(coordinator, key, name, icon) for key, name, icon in SENSORS],
+            config_subentry_id=subentry_id,
         )
 
     # Register a callback so _async_setup_pi can add entities for new Pis
     @callback
     def _add_pi(coordinator: HausfunkCoordinator, subentry_id: str):
         async_add_entities(
-            HausfunkBinarySensor(coordinator, key, name, icon)
-            for key, name, icon in SENSORS
+            [HausfunkBinarySensor(coordinator, key, name, icon) for key, name, icon in SENSORS],
+            config_subentry_id=subentry_id,
         )
 
     entry_data["pi_add_callbacks"].append(_add_pi)
