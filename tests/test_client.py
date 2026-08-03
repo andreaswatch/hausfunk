@@ -76,12 +76,37 @@ class TestGo2rtcPersistStream(unittest.IsolatedAsyncioTestCase):
         # existing sections preserved
         self.assertEqual(data["api"]["listen"], ":1984")
 
+    async def test_persist_stream_fills_default_ports_when_missing(self):
+        # empty config -> api/rtsp/webrtc listen defaults are filled in
+        client, calls = self._client(config_text="streams: {}\n")
+        await client.persist_stream(
+            "tuer", ["webrtc:ws://192.168.178.11:1984/api/ws?src=tuer"]
+        )
+        import yaml
+        data = yaml.safe_load(self._posted)
+        self.assertEqual(data["api"]["listen"], ":1984")
+        self.assertEqual(data["rtsp"]["listen"], ":8554")
+        self.assertEqual(data["webrtc"]["listen"], ":8555")
+        self.assertEqual(data["preload"]["tuer"], "video&audio")
+
+    async def test_persist_stream_keeps_custom_ports(self):
+        # existing custom ports survive the merge
+        client, calls = self._client(
+            config_text="rtsp:\n  listen: ':9000'\nstreams: {}\n"
+        )
+        await client.persist_stream("tuer", ["webrtc:ws://192.168.178.11:1984/api/ws?src=tuer"])
+        import yaml
+        data = yaml.safe_load(self._posted)
+        self.assertEqual(data["rtsp"]["listen"], ":9000")
+
     async def test_persist_stream_skips_webrtc_when_not_configured(self):
         client, calls = self._client()
         await client.persist_stream("tuer", ["webrtc:ws://192.168.178.11:1984/api/ws?src=tuer"])
         import yaml
         data = yaml.safe_load(self._posted)
-        self.assertNotIn("webrtc", data)
+        # webrtc section is still filled with the default listen
+        self.assertEqual(data["webrtc"]["listen"], ":8555")
+        self.assertNotIn("candidates", data.get("webrtc", {}))
         self.assertEqual(data["preload"]["tuer"], "video&audio")
 
     async def test_restart(self):

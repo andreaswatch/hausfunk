@@ -105,8 +105,9 @@ class Go2rtcClient:
 
         Reads the current config, merges the stream (and, when configured, the
         ``preload`` and ``webrtc`` sections) into it and writes it back.
-        This preserves all other streams instead of relying on go2rtc's
-        (clobber-prone) PATCH /api/config merge semantics.
+        ``api``/``rtsp`` listen ports are only added if missing, so existing
+        custom ports are preserved. Other streams are never touched (unlike
+        go2rtc's clobber-prone PATCH /api/config merge semantics).
         """
         await self.ensure_session()
         text = await self._request("GET", "/api/config")
@@ -115,13 +116,16 @@ class Go2rtcClient:
         streams[name] = list(urls)
         preload = data.setdefault("preload", {})
         preload[name] = "video&audio"
-        if webrtc_port is not None:
-            webrtc = data.setdefault("webrtc", {})
-            webrtc["listen"] = f":{webrtc_port}"
+        # Only fill in defaults when the sections/keys are missing, so a
+        # user's existing custom ports survive the merge.
+        data.setdefault("api", {}).setdefault("listen", ":1984")
+        data.setdefault("rtsp", {}).setdefault("listen", ":8554")
+        webrtc = data.setdefault("webrtc", {})
+        webrtc.setdefault("listen", f":{webrtc_port or 8555}")
         if candidates:
             entries = [c.strip() for c in candidates.split(",") if c.strip()]
             if entries:
-                data.setdefault("webrtc", {})["candidates"] = entries
+                webrtc["candidates"] = entries
         body = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
         await self._request(
             "POST", "/api/config", data=body, content_type="application/yaml"
