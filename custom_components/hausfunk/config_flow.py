@@ -57,6 +57,7 @@ from .const import (
 from .go2rtc.client import Go2rtcClient, Go2rtcError
 from .pi.installer import HausfunkInstaller
 from .pi.ssh import PiCommandError, PiConnectionError, PiSSH
+from . import get_main_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -129,6 +130,31 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
         return HausfunkOptionsFlow(config_entry)
 
     async def async_step_user(self, user_input=None):
+        """Handle the initial config flow step."""
+        # Check if the main config entry already exists
+        existing_entries = self.hass.config_entries.async_entries(DOMAIN)
+        main_entry = get_main_entry(self.hass)
+        
+        if main_entry or (existing_entries and any(CONF_PI_HOST not in e.data for e in existing_entries)):
+            # Main entry already exists. Forward user to add a Pi.
+            return await self.async_step_pi(user_input)
+
+        # Otherwise, this is the initial setup. Configure the main HA-side go2rtc entry.
+        if user_input is not None:
+            self._data.update(user_input)
+            return self.async_create_entry(
+                title="Hausfunk Sprechanlage",
+                data=self._data,
+            )
+
+        schema, detected = await self._detect_go2rtc()
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            description_placeholders={"detected": detected},
+        )
+
+    async def async_step_pi(self, user_input=None):
         """Add a new Pi: SSH access."""
         errors = {}
         if user_input is not None:
@@ -139,40 +165,13 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             if not errors:
                 # Populate default runtime/input settings
                 self._data.setdefault(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
-                return await self.async_step_go2rtc()
+                return await self.async_step_install()
         return self.async_show_form(
-            step_id="user", data_schema=PI_SCHEMA, errors=errors,
+            step_id="pi", data_schema=PI_SCHEMA, errors=errors,
             description_placeholders={
                 "fingerprint": getattr(self, "_fingerprint", ""),
-                "detected": "",  # Fallback for cached frontend translations (v0.6.2)
+                "detected": "",
             },
-        )
-
-    async def async_step_go2rtc(self, user_input=None):
-        """Host-level settings: the HA go2rtc instance."""
-        existing_entries = self.hass.config_entries.async_entries(DOMAIN)
-        if existing_entries:
-            # We already have a configured entry. Copy go2rtc settings from it.
-            existing = existing_entries[0]
-            host_keys = [
-                CONF_GO2RTC_URL, CONF_GO2RTC_USERNAME, CONF_GO2RTC_PASSWORD,
-                CONF_GO2RTC_VERSION, CONF_GO2RTC_HOST, CONF_GO2RTC_RTSP_PORT,
-                CONF_GO2RTC_WEBRTC_PORT, CONF_GO2RTC_CANDIDATES
-            ]
-            for key in host_keys:
-                if key in existing.data:
-                    self._data[key] = existing.data[key]
-            return await self.async_step_install()
-
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_install()
-
-        schema, detected = await self._detect_go2rtc()
-        return self.async_show_form(
-            step_id="go2rtc",
-            data_schema=schema,
-            description_placeholders={"detected": detected},
         )
 
     async def async_step_install(self, user_input=None):
@@ -273,27 +272,45 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             self._data[CONF_PI_HOST], self._data[CONF_PI_PORT],
             self._data[CONF_PI_USERNAME], self._data[CONF_PI_PASSWORD],
         )
-        installer = HausfunkInstaller(self.hass, ssh, self._data)
+        main_entry = get_main_entry(self.hass)
+        merged_config = {**main_entry.data, **self._data} if main_entry else self._data
+        installer = HausfunkInstaller(self.hass, ssh, merged_config)
         try:
             await installer.install(self._data.get(CONF_SUDO_PASSWORD))
         except PiCommandError as err:
-            _LOGGER.error("Pi-Installation fehlgeschlagen: %s", err)
+            _LOGGER.error("Pi-Installation failed: %s", err)
             return {"base": "install_failed"}
         return {}
 
 
 class HausfunkOptionsFlow(OptionsFlow):
-    """Handle options for Hausfunk Pi (stream + go2rtc)."""
+    """Handle options for Hausfunk."""
 
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
         self._data = {}
 
     async def async_step_init(self, user_input=None):
+        """Initialize options flow step."""
+        if CONF_PI_HOST not in self._entry.data:
+            # Main entry Options Flow (go2rtc settings)
+            return await self.async_step_go2rtc(user_input)
+        
+        # Pi entry Options Flow (Pi connection settings)
+        return await self.async_step_pi_options(user_input)
+
+    async def async_step_pi_options(self, user_input=None):
         """Pi-specific connection settings."""
         if user_input is not None:
             self._data.update(user_input)
-            return await self.async_step_go2rtc()
+            new_data = {**self._entry.data, **self._data}
+            self.hass.config_entries.async_update_entry(
+                self._entry, data=new_data
+            )
+            # Reload this entry to apply changes
+            await self.hass.config_entries.async_reload(self._entry.entry_id)
+            return self.async_create_entry(title="", data={})
+
         return self.async_show_form(
             step_id="init",
             data_schema=_pi_connection_options_schema(self._entry.data),
@@ -308,26 +325,8 @@ class HausfunkOptionsFlow(OptionsFlow):
                 self._entry, data=new_data
             )
 
-            # Propagate the go2rtc settings to all other config entries
-            host_keys = [
-                CONF_GO2RTC_URL, CONF_GO2RTC_USERNAME, CONF_GO2RTC_PASSWORD,
-                CONF_GO2RTC_VERSION, CONF_GO2RTC_HOST, CONF_GO2RTC_RTSP_PORT,
-                CONF_GO2RTC_WEBRTC_PORT, CONF_GO2RTC_CANDIDATES
-            ]
-            other_entries = [
-                e for e in self.hass.config_entries.async_entries(DOMAIN)
-                if e.entry_id != self._entry.entry_id
-            ]
-            for entry in other_entries:
-                updated_data = dict(entry.data)
-                for key in host_keys:
-                    if key in self._data:
-                        updated_data[key] = self._data[key]
-                self.hass.config_entries.async_update_entry(entry, data=updated_data)
-
-            # Reload this and other entries to apply changes
-            await self.hass.config_entries.async_reload(self._entry.entry_id)
-            for entry in other_entries:
+            # Reload all Hausfunk entries to apply changes to all Pis
+            for entry in self.hass.config_entries.async_entries(DOMAIN):
                 await self.hass.config_entries.async_reload(entry.entry_id)
 
             return self.async_create_entry(title="", data={})
