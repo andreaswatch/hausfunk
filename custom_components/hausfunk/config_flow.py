@@ -218,7 +218,12 @@ class HausfunkPiSubentryFlow(ConfigSubentryFlow):
     """Handle adding / editing a Pi device as a subentry."""
 
     def async_create_entry(self, **kwargs):
-        """Create the subentry and reload the host entry so the device appears."""
+        """Create the subentry and reload the host entry.
+
+        The device is registered in async_setup_entry (during the reload)
+        with the correct subentry link; the reload is scheduled here so the
+        device appears without a manual refresh.
+        """
         result = super().async_create_entry(**kwargs)
         entry_id, _subentry_type = self.handler
         self.hass.config_entries.async_schedule_reload(entry_id)
