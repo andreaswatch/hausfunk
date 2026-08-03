@@ -138,6 +138,43 @@ class HausfunkInstaller:
         finally:
             await self.ssh.close()
 
+    async def uninstall(self, password: str | None = None) -> str:
+        """Stop, disable and remove the Pi service, config and binary."""
+        self._sudo_password = password
+        try:
+            await self.ssh.connect()
+            _LOGGER.info("Verbunden mit Pi, starte Deinstallation")
+            await self._detect_home()
+
+            # Stop and disable the service
+            await self.ssh.run(f"systemctl --user disable --now {PI_SERVICE_NAME}")
+            await self.ssh.run(f"systemctl --user daemon-reload")
+
+            # Remove service file, config and binary (best effort)
+            service_path = SERVICE_PATH_TEMPLATE.format(
+                home_dir=self._home_dir,
+                service_dir=PI_USER_SERVICE_DIR,
+                service_name=PI_SERVICE_NAME,
+            )
+            for path in (service_path, self._config_path, self._binary_path):
+                status, _out, _err = await self.ssh.run(f"rm -f {path}")
+                if status != 0:
+                    _LOGGER.warning("Konnte %s nicht entfernen", path)
+
+            return "Hausfunk Pi deinstalliert"
+        finally:
+            await self.ssh.close()
+
+    async def reboot(self, password: str | None = None) -> str:
+        """Reboot the Pi over SSH (requires sudo)."""
+        self._sudo_password = password
+        try:
+            await self.ssh.connect()
+            await self._sudo("reboot")
+            return "Reboot-Befehl an Pi gesendet"
+        finally:
+            await self.ssh.close()
+
     async def _detect_arch(self) -> str:
         status, out, _err = await self.ssh.run("uname -m")
         if status != 0:

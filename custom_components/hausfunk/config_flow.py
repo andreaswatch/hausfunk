@@ -10,12 +10,14 @@ from homeassistant.core import callback
 from .const import (
     CONF_AUDIO_GAIN,
     CONF_FPS,
+    CONF_GO2RTC_CANDIDATES,
     CONF_GO2RTC_HOST,
     CONF_GO2RTC_PASSWORD,
     CONF_GO2RTC_RTSP_PORT,
     CONF_GO2RTC_URL,
     CONF_GO2RTC_USERNAME,
     CONF_GO2RTC_VERSION,
+    CONF_GO2RTC_WEBRTC_PORT,
     CONF_HEIGHT,
     CONF_INSTALL_NOW,
     CONF_PI_GO2RTC_PORT,
@@ -29,10 +31,12 @@ from .const import (
     CONF_WIDTH,
     DEFAULT_AUDIO_GAIN,
     DEFAULT_FPS,
+    DEFAULT_GO2RTC_CANDIDATES,
     DEFAULT_GO2RTC_HOST,
     DEFAULT_GO2RTC_RTSP_PORT,
     DEFAULT_GO2RTC_URL,
     DEFAULT_GO2RTC_VERSION,
+    DEFAULT_GO2RTC_WEBRTC_PORT,
     DEFAULT_HEIGHT,
     DEFAULT_PI_GO2RTC_PORT,
     DEFAULT_RTSP_PORT,
@@ -78,6 +82,12 @@ GO2RTC_SCHEMA = vol.Schema(
         vol.Required(CONF_GO2RTC_VERSION, default=DEFAULT_GO2RTC_VERSION): str,
         vol.Required(CONF_GO2RTC_HOST, default=DEFAULT_GO2RTC_HOST): str,
         vol.Required(CONF_GO2RTC_RTSP_PORT, default=DEFAULT_GO2RTC_RTSP_PORT): int,
+        vol.Required(
+            CONF_GO2RTC_WEBRTC_PORT, default=DEFAULT_GO2RTC_WEBRTC_PORT
+        ): int,
+        vol.Optional(
+            CONF_GO2RTC_CANDIDATES, default=DEFAULT_GO2RTC_CANDIDATES
+        ): str,
     }
 )
 
@@ -200,6 +210,8 @@ class HausfunkOptionsFlow(OptionsFlow):
                 vol.Required(CONF_GO2RTC_VERSION, default=current.get(CONF_GO2RTC_VERSION, DEFAULT_GO2RTC_VERSION)): str,
                 vol.Required(CONF_GO2RTC_HOST, default=current.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST)): str,
                 vol.Required(CONF_GO2RTC_RTSP_PORT, default=current.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT)): int,
+                vol.Required(CONF_GO2RTC_WEBRTC_PORT, default=current.get(CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT)): int,
+                vol.Optional(CONF_GO2RTC_CANDIDATES, default=current.get(CONF_GO2RTC_CANDIDATES, DEFAULT_GO2RTC_CANDIDATES)): str,
                 vol.Required(CONF_INSTALL_NOW, default=False): bool,
             }
         )

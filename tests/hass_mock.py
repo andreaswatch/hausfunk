@@ -117,9 +117,18 @@ class DummySwitchEntity(DummyEntity):
         pass
 
 
+class DummyButtonEntity(DummyEntity):
+    def __init__(self):
+        super().__init__()
+
+    async def async_press(self):
+        pass
+
+
 components_mock = MagicMock()
 components_mock.binary_sensor.BinarySensorEntity = DummyBinarySensorEntity
 components_mock.switch.SwitchEntity = DummySwitchEntity
+components_mock.button.ButtonEntity = DummyButtonEntity
 
 
 class DummyCameraEntity(DummyEntity):
@@ -145,6 +154,13 @@ components_mock.camera.CameraEntityFeature = type(
 sys.modules["homeassistant.components.binary_sensor"] = components_mock.binary_sensor
 sys.modules["homeassistant.components.switch"] = components_mock.switch
 sys.modules["homeassistant.components.camera"] = components_mock.camera
+sys.modules["homeassistant.components.button"] = components_mock.button
+
+# persistent_notification component
+pn_mock = MagicMock()
+pn_mock.async_create = MagicMock()
+pn_mock.async_dismiss = MagicMock()
+sys.modules["homeassistant.components.persistent_notification"] = pn_mock
 
 # Third-party libs used by the component that are not installed locally
 sys.modules["asyncssh"] = MagicMock()

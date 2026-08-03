@@ -8,12 +8,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONF_GO2RTC_CANDIDATES,
     CONF_GO2RTC_PASSWORD,
     CONF_GO2RTC_URL,
     CONF_GO2RTC_USERNAME,
+    CONF_GO2RTC_WEBRTC_PORT,
     CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
+    CONF_RTSP_PORT,
     CONF_STREAM_NAME,
+    DEFAULT_GO2RTC_WEBRTC_PORT,
     DEFAULT_PI_GO2RTC_PORT,
     DOMAIN,
 )
@@ -54,14 +58,24 @@ class HausfunkCoordinator(DataUpdateCoordinator):
             f"?src={self.config[CONF_STREAM_NAME]}"
         )
 
-    async def register_stream(self):
+    async def register_stream(self, persist: bool = True):
         """Register the stream in go2rtc and persist it to its config."""
         name = self.config[CONF_STREAM_NAME]
         try:
             await self.go2rtc.ensure_stream(name, [self.stream_url])
-            await self.go2rtc.persist_stream(name, [self.stream_url])
+            if persist:
+                await self.go2rtc.persist_stream(
+                    name,
+                    [self.stream_url],
+                    webrtc_port=self.config.get(
+                        CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT
+                    ),
+                    candidates=self.config.get(CONF_GO2RTC_CANDIDATES),
+                )
         except Go2rtcError:
             _LOGGER.exception("Stream-Registrierung in go2rtc fehlgeschlagen")
+            return False
+        return True
 
     async def remove_stream(self):
         """Remove the stream from go2rtc."""
@@ -69,6 +83,17 @@ class HausfunkCoordinator(DataUpdateCoordinator):
             await self.go2rtc.remove_stream(self.config[CONF_STREAM_NAME])
         except Go2rtcError:
             _LOGGER.exception("Stream-Entfernung in go2rtc fehlgeschlagen")
+            return False
+        return True
+
+    async def restart_go2rtc(self):
+        """Restart the HA go2rtc instance."""
+        try:
+            await self.go2rtc.restart()
+        except Go2rtcError:
+            _LOGGER.exception("go2rtc-Neustart fehlgeschlagen")
+            return False
+        return True
 
     async def _async_update_data(self) -> dict:
         pi_reachable = await self._probe_pi()

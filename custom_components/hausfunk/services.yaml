@@ -6,9 +6,17 @@ update_pi:
   name: Pi aktualisieren
   description: Aktualisiert das go2rtc-Binary auf der Pi auf die konfigurierte Version und startet den Dienst neu.
 
+uninstall_pi:
+  name: Pi deinstallieren
+  description: Stoppt und deaktiviert den Pi-Dienst und entfernt Config und Binary.
+
+reboot_pi:
+  name: Pi neu starten
+  description: Startet die Pi über SSH neu.
+
 register_stream:
   name: Stream registrieren
-  description: Registriert den Hausfunk-Stream in der go2rtc-Instanz von Home Assistant.
+  description: Registriert den Hausfunk-Stream in der go2rtc-Instanz von Home Assistant und schreibt die go2rtc-Konfiguration (inkl. preload und WebRTC-Candidates).
 
 remove_stream:
   name: Stream entfernen

@@ -7,7 +7,7 @@ from urllib.parse import quote
 import aiohttp
 import yaml
 
-from ..const import DEFAULT_GO2RTC_URL
+from ..const import DEFAULT_GO2RTC_URL, DEFAULT_GO2RTC_WEBRTC_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -89,10 +89,22 @@ class Go2rtcClient:
         if await self.stream_exists(name):
             await self._request("DELETE", "/api/streams", params={"name": name})
 
-    async def persist_stream(self, name: str, urls: list[str]):
+    async def restart(self):
+        """Restart the go2rtc process to apply config changes."""
+        await self.ensure_session()
+        await self._request("POST", "/api/restart")
+
+    async def persist_stream(
+        self,
+        name: str,
+        urls: list[str],
+        webrtc_port: int | None = None,
+        candidates: str | None = None,
+    ):
         """Merge the stream into go2rtc's config file so it survives restarts.
 
-        Reads the current config, merges the stream into it and writes it back.
+        Reads the current config, merges the stream (and, when configured, the
+        ``preload`` and ``webrtc`` sections) into it and writes it back.
         This preserves all other streams instead of relying on go2rtc's
         (clobber-prone) PATCH /api/config merge semantics.
         """
@@ -101,6 +113,15 @@ class Go2rtcClient:
         data = yaml.safe_load(text) or {}
         streams = data.setdefault("streams", {})
         streams[name] = list(urls)
+        preload = data.setdefault("preload", {})
+        preload[name] = "video&audio"
+        if webrtc_port is not None:
+            webrtc = data.setdefault("webrtc", {})
+            webrtc["listen"] = f":{webrtc_port}"
+        if candidates:
+            entries = [c.strip() for c in candidates.split(",") if c.strip()]
+            if entries:
+                data.setdefault("webrtc", {})["candidates"] = entries
         body = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
         await self._request(
             "POST", "/api/config", data=body, content_type="application/yaml"

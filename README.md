@@ -90,8 +90,10 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
    mic gain.
 4. **go2rtc:** URL of the HA go2rtc instance (e.g. `http://localhost:11984`
    with the HA add-on / built-in go2rtc), optional credentials, go2rtc
-   version to install on the Pi, plus the HA go2rtc RTSP host and port
-   (defaults `127.0.0.1` / `18554` — the add-on prefixes ports with `1`).
+   version to install on the Pi, the HA go2rtc RTSP host and port
+   (defaults `127.0.0.1` / `18554` — the add-on prefixes ports with `1`),
+   plus the HA go2rtc **WebRTC port** (default `8555`) and optional WebRTC
+   **candidates** (comma-separated, e.g. `mydomain:8555, STUN:stun.l.google.com:19302`).
 
    If you run a standalone go2rtc without the `1` prefix, set the RTSP port
    to `8554` instead.
@@ -99,7 +101,8 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
    config + service, enables it).
 
 Afterwards the `camera.<stream_name>` entity appears on the Hausfunk Pi device
-and the stream `<stream_name>` is registered in HA go2rtc.
+and the stream `<stream_name>` is registered in HA go2rtc (including the
+`preload` entry and the WebRTC section so the two-way audio relay works).
 
 ## Services
 
@@ -107,7 +110,9 @@ and the stream `<stream_name>` is registered in HA go2rtc.
 |---------|-------------|
 | `hausfunk.setup_pi` | (Re)installs or updates the Pi side over SSH |
 | `hausfunk.update_pi` | Updates the go2rtc binary to the configured version |
-| `hausfunk.register_stream` | (Re)registers the stream in the HA go2rtc instance |
+| `hausfunk.uninstall_pi` | Stops/disables the Pi service, removes config + binary |
+| `hausfunk.reboot_pi` | Reboots the Pi over SSH |
+| `hausfunk.register_stream` | (Re)registers the stream in HA go2rtc (streams + preload + WebRTC) |
 | `hausfunk.remove_stream` | Removes the stream from the HA go2rtc instance |
 
 ## Entities
@@ -118,6 +123,11 @@ and the stream `<stream_name>` is registered in HA go2rtc.
 | `binary_sensor.hausfunk_pi_erreichbar` | Pi reachable (RTSP port probe) |
 | `binary_sensor.hausfunk_stream_aktiv` | Stream registered in go2rtc |
 | `switch.hausfunk_stream_registriert` | Toggle stream registration |
+| `button.hausfunk_pi_einrichten` | Install / update the Pi over SSH |
+| `button.hausfunk_pi_deinstallieren` | Stop + remove the Pi service, config and binary |
+| `button.hausfunk_pi_neu_starten` | Reboot the Pi |
+| `button.hausfunk_ha_go2rtc_einrichten` | Register stream + write HA go2rtc config |
+| `button.hausfunk_ha_go2rtc_entfernen` | Remove the stream from HA go2rtc |
 
 ## Development
 
