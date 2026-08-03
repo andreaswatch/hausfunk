@@ -18,7 +18,7 @@ import logging
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
 
 from .const import (
     CONF_PI_HOST,
@@ -59,7 +59,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "go2rtc": go2rtc_client,
         "coordinators": {},      # subentry_id -> HausfunkCoordinator
         "pi_add_callbacks": [],  # registered by each platform
+        "subentry_ids": set(entry.subentries),
     }
+
+    # HA has no lifecycle hook for runtime subentry changes. It only fires the
+    # config entry update listeners, so reload the hub entry whenever its Pi
+    # subentries are added or removed and the new device/entities show up
+    # without a manual reload.
+    entry.async_on_unload(entry.add_update_listener(_async_subentry_listener))
 
     # Bootstrap existing Pi subentries (those already stored in config_entries)
     for subentry in entry.subentries.values():
@@ -91,32 +98,20 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def async_setup_subentry(
-    hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigEntry
-) -> bool:
-    """Called by HA when a new Pi subentry is created via 'Pi hinzufügen'."""
-    await _async_setup_pi(hass, entry, subentry)
-    return True
+async def _async_subentry_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the hub entry when its Pi subentries change.
 
-
-async def async_unload_subentry(
-    hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigEntry
-) -> bool:
-    """Called by HA when a Pi subentry is removed."""
-    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
-    coordinator = entry_data.get("coordinators", {}).pop(subentry.subentry_id, None)
-    if coordinator:
-        await coordinator.async_close()
-
-    # Remove all entities that belong to this Pi from the entity registry
-    pi_host = subentry.data.get(CONF_PI_HOST, "")
-    if pi_host:
-        registry = er.async_get(hass)
-        for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-            if pi_host in entity_entry.unique_id:
-                registry.async_remove(entity_entry.entity_id)
-
-    return True
+    Fired on every config entry update (options, data, subentries). Only reload
+    when the set of Pi subentries actually changed, so unrelated updates such
+    as option changes or stream-mode toggles do not restart the entry.
+    """
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if entry_data is None:
+        return
+    current_ids = set(entry.subentries)
+    if current_ids != entry_data.get("subentry_ids"):
+        entry_data["subentry_ids"] = current_ids
+        await hass.config_entries.async_reload(entry.entry_id)
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +154,7 @@ async def _async_setup_pi(
         "go2rtc": None,
         "coordinators": {},
         "pi_add_callbacks": [],
+        "subentry_ids": set(entry.subentries),
     })
     entry_data["coordinators"][subentry.subentry_id] = coordinator
 
