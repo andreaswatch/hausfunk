@@ -21,9 +21,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators: dict[str, HausfunkCoordinator] = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         HausfunkBinarySensor(coordinator, key, name, icon)
+        for coordinator in coordinators.values()
         for key, name, icon in SENSORS
     )
 
@@ -38,7 +39,7 @@ class HausfunkBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._key = key
         self._attr_name = name
         self._attr_icon = icon
-        self._attr_unique_id = f"hausfunk_{key}"
+        self._attr_unique_id = f"hausfunk_{coordinator.subentry_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
         )

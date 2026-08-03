@@ -16,8 +16,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([HausfunkStreamSwitch(coordinator)])
+    coordinators: dict[str, HausfunkCoordinator] = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities(
+        HausfunkStreamSwitch(coordinator) for coordinator in coordinators.values()
+    )
 
 
 class HausfunkStreamSwitch(CoordinatorEntity, SwitchEntity):
@@ -29,7 +31,7 @@ class HausfunkStreamSwitch(CoordinatorEntity, SwitchEntity):
         super().__init__(coordinator)
         self._attr_name = "Stream registriert"
         self._attr_icon = "mdi:cast"
-        self._attr_unique_id = "hausfunk_stream_switch"
+        self._attr_unique_id = f"hausfunk_stream_switch_{coordinator.subentry_id}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
         )

@@ -24,8 +24,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([HausfunkCamera(coordinator)])
+    coordinators: dict[str, HausfunkCoordinator] = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities(
+        HausfunkCamera(coordinator) for coordinator in coordinators.values()
+    )
 
 
 class HausfunkCamera(CoordinatorEntity, Camera):
@@ -45,7 +47,7 @@ class HausfunkCamera(CoordinatorEntity, Camera):
         Camera.__init__(self)
         self._attr_name = "Kamera"
         self._attr_icon = "mdi:cctv"
-        self._attr_unique_id = "hausfunk_camera"
+        self._attr_unique_id = f"hausfunk_camera_{coordinator.subentry_id}"
         self._attr_supported_features = CameraEntityFeature.STREAM
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},

@@ -38,9 +38,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators: dict[str, HausfunkCoordinator] = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         HausfunkButton(coordinator, key, name, icon, action)
+        for coordinator in coordinators.values()
         for key, name, icon, action in BUTTONS
     )
 
@@ -57,7 +58,7 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
         self._action = action
         self._attr_name = name
         self._attr_icon = icon
-        self._attr_unique_id = f"hausfunk_button_{key}"
+        self._attr_unique_id = f"hausfunk_button_{coordinator.subentry_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
         )
@@ -69,6 +70,7 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
     async def async_press(self):
         """Execute the button action."""
         config = self.coordinator.config
+        pi_config = self.coordinator.pi_config
         hass = self.coordinator.hass
         if self._action == "install_ha":
             ok = await self.coordinator.register_stream(persist=True, restart=True)
@@ -80,17 +82,17 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
             await self.coordinator.async_request_refresh()
         else:
             ssh = PiSSH(
-                config[CONF_PI_HOST],
-                config[CONF_PI_PORT],
-                config[CONF_PI_USERNAME],
-                config[CONF_PI_PASSWORD],
+                pi_config[CONF_PI_HOST],
+                pi_config[CONF_PI_PORT],
+                pi_config[CONF_PI_USERNAME],
+                pi_config[CONF_PI_PASSWORD],
             )
             installer = HausfunkInstaller(hass, ssh, config)
             try:
                 if self._action == "install_pi":
-                    await installer.install(config.get(CONF_SUDO_PASSWORD))
+                    await installer.install(pi_config.get(CONF_SUDO_PASSWORD))
                 elif self._action == "uninstall_pi":
-                    await installer.uninstall(config.get(CONF_SUDO_PASSWORD))
+                    await installer.uninstall(pi_config.get(CONF_SUDO_PASSWORD))
                 elif self._action == "restart_pi_go2rtc":
                     await installer.restart_service()
             except PiCommandError as err:

@@ -81,49 +81,53 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
 
 ## Configuration
 
-### Initial setup (host-level)
+### 1. Add the integration (host-level, once)
 
-1. Go to **Settings → Devices & Services** and click **Add Integration**, search
-   for "Hausfunk".
-2. **Connect Pi:** Pi IP address, SSH port, SSH username, SSH password
-   (and sudo password if different from the SSH password).
-3. **go2rtc (Home Assistant):** the integration tries to **auto-detect** the HA
-   go2rtc instance (known local endpoints) and the HA host's LAN IP. Detected
-   values are pre-filled and shown in the form; adjust them if needed:
-   go2rtc URL, optional credentials, go2rtc version, **HA go2rtc LAN host**
-   (used for the WebRTC candidate), RTSP port, WebRTC port.
+Go to **Settings → Devices & Services** → **Add Integration**, search for
+"Hausfunk". The config flow only asks for **go2rtc (Home Assistant)** settings:
 
-   The **HA go2rtc RTSP host** is also used to derive the WebRTC candidate:
-   set it to the LAN address of the go2rtc instance (e.g. `192.168.178.21`)
-   so the browser can open the media connection. If go2rtc runs inside a VM,
-   this must be the VM's IP, **not** the hypervisor's. You can override the
-   candidates manually via **WebRTC candidates** (comma-separated, e.g.
-   `mydomain:8555, 192.168.178.21:8555, STUN:stun.l.google.com:19302`).
+- The integration tries to **auto-detect** the HA go2rtc instance (known local
+  endpoints) and the HA host's LAN IP. Detected values are pre-filled; adjust
+  if needed: go2rtc URL, optional credentials, go2rtc version, **HA go2rtc LAN
+  host** (used for the WebRTC candidate), RTSP port, WebRTC port.
 
-   If you run a standalone go2rtc without the `1` prefix, set the RTSP port
-   to `8554` instead.
-4. **Install:** optionally set up the Pi right away (downloads go2rtc, writes
-   config + service, enables it).
+  The **HA go2rtc RTSP host** is also used to derive the WebRTC candidate:
+  set it to the LAN address of the go2rtc instance (e.g. `192.168.178.21`)
+  so the browser can open the media connection. If go2rtc runs inside a VM,
+  this must be the VM's IP, **not** the hypervisor's. You can override the
+  candidates manually via **WebRTC candidates** (comma-separated, e.g.
+  `mydomain:8555, 192.168.178.21:8555, STUN:stun.l.google.com:19302`).
 
-Afterwards the `camera.<stream_name>` entity appears on the Hausfunk Pi device
-and the stream `<stream_name>` is registered in HA go2rtc (including the
-`preload` entry and the WebRTC section so the two-way audio relay works).
+  If you run a standalone go2rtc without the `1` prefix, set the RTSP port
+  to `8554` instead.
 
-### Device settings (per Pi)
+### 2. Add a Pi device (per device)
 
-Open the **Hausfunk Pi** device → **Settings → Options** to adjust the
-Pi-specific settings:
+On the Hausfunk integration (or the go2rtc device) click **Add device / Pi**.
+The device flow asks for the **Pi-specific** settings:
 
 | Setting | Description |
 |---------|-------------|
+| Pi IP / SSH access | Pi IP, SSH port, username, password, sudo password |
 | Stream name | Name of the stream in go2rtc (default `tuer`) |
 | Pi RTSP port | RTSP server port on the Pi (default `8554`) |
 | Pi go2rtc API port | go2rtc API port on the Pi (default `1984`) |
 | Stream mode | `webrtc` (relay, recommended) or `rtsp` (direct pull) |
 | Width / Height / FPS | Camera resolution and frame rate |
 | Microphone gain | Mic amplification on the Pi |
-| SSH access | Pi IP, SSH port, username, password, sudo password |
-| Apply settings to the Pi now | Re-run the Pi installer with the new settings |
+| Set up the Pi now | Install/configure go2rtc on the Pi right away |
+
+Afterwards the `camera.<stream_name>` entity appears on the Hausfunk Pi device
+and the stream `<stream_name>` is registered in HA go2rtc (including the
+`preload` entry and the WebRTC section so the two-way audio relay works).
+You can add multiple Pis to one go2rtc host.
+
+### Edit settings
+
+- **Host (go2rtc):** Integration → Options (URL, version, LAN host, ports,
+  candidates).
+- **Pi device:** Device → the gear/edit button (stream name, ports, mode,
+  resolution, fps, mic gain) or **Add device** for another Pi.
 
 ## Services
 
@@ -141,14 +145,14 @@ Pi-specific settings:
 | Entity | Description |
 |--------|-------------|
 | `camera.<stream_name>` | Camera stream proxied through HA go2rtc (WebRTC, backchannel) |
-| `binary_sensor.hausfunk_pi_erreichbar` | Pi reachable (RTSP port probe) |
-| `binary_sensor.hausfunk_stream_aktiv` | Stream registered in go2rtc |
-| `switch.hausfunk_stream_registriert` | Toggle stream registration |
-| `button.hausfunk_pi_einrichten` | Install / update the Pi over SSH |
-| `button.hausfunk_pi_deinstallieren` | Stop + remove the Pi service, config and binary |
-| `button.hausfunk_go2rtc_auf_pi_neu_starten` | Restart the go2rtc service on the Pi |
-| `button.hausfunk_ha_go2rtc_einrichten` | Register stream + write HA go2rtc config |
-| `button.hausfunk_ha_go2rtc_entfernen` | Remove the stream from HA go2rtc |
+| `binary_sensor.<pi>_erreichbar` | Pi reachable (RTSP port probe) |
+| `binary_sensor.<pi>_stream_aktiv` | Stream registered in go2rtc |
+| `switch.<pi>_stream_registriert` | Toggle stream registration |
+| `button.<pi>_pi_einrichten` | Install / update the Pi over SSH |
+| `button.<pi>_pi_deinstallieren` | Stop + remove the Pi service, config and binary |
+| `button.<pi>_go2rtc_auf_pi_neu_starten` | Restart the go2rtc service on the Pi |
+| `button.<pi>_ha_go2rtc_einrichten` | Register stream + write HA go2rtc config |
+| `button.<pi>_ha_go2rtc_entfernen` | Remove the stream from HA go2rtc |
 
 ## Development
 

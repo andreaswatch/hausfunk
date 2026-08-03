@@ -5,6 +5,8 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 DOMAIN = "hausfunk"
 NAME = "Hausfunk"
 
+PI_SUBENTRY_TYPE = "pi"
+
 PLATFORMS = ["binary_sensor", "switch", "camera", "button"]
 
 # Defaults

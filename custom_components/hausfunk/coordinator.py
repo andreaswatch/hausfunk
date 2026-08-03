@@ -35,17 +35,31 @@ UPDATE_INTERVAL = timedelta(seconds=30)
 
 
 class HausfunkCoordinator(DataUpdateCoordinator):
-    """Polls Pi reachability and go2rtc stream registration."""
+    """Polls Pi reachability and go2rtc stream registration.
 
-    def __init__(self, hass: HomeAssistant, config: dict):
+    ``host_config`` holds the entry-level go2rtc settings, ``pi_config`` the
+    per-device subentry settings. They are merged so both are available via
+    ``config`` (used by entities).
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        host_config: dict,
+        pi_config: dict,
+        subentry_id: str | None = None,
+    ):
         super().__init__(
             hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL
         )
-        self.config = config
+        self.host_config = host_config
+        self.pi_config = pi_config
+        self.subentry_id = subentry_id
+        self.config = {**host_config, **pi_config}
         self.go2rtc = Go2rtcClient(
-            url=config[CONF_GO2RTC_URL],
-            username=config.get(CONF_GO2RTC_USERNAME) or None,
-            password=config.get(CONF_GO2RTC_PASSWORD) or None,
+            url=host_config[CONF_GO2RTC_URL],
+            username=host_config.get(CONF_GO2RTC_USERNAME) or None,
+            password=host_config.get(CONF_GO2RTC_PASSWORD) or None,
         )
 
     @property
