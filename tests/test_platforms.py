@@ -6,7 +6,6 @@ import tests.hass_mock
 from custom_components.hausfunk.binary_sensor import HausfunkBinarySensor
 from custom_components.hausfunk.button import BUTTONS, HausfunkButton
 from custom_components.hausfunk.camera import HausfunkCamera
-from custom_components.hausfunk.number import HausfunkNumber
 from custom_components.hausfunk.select import HausfunkStreamModeSelect
 from custom_components.hausfunk.switch import HausfunkStreamSwitch
 from custom_components.hausfunk.const import (
@@ -215,30 +214,6 @@ class TestSelectEntity(unittest.IsolatedAsyncioTestCase):
         coordinator.async_update_setting.assert_awaited_once_with("stream_mode", "rtsp")
 
 
-class TestNumberEntities(unittest.IsolatedAsyncioTestCase):
-    async def test_number_width(self):
-        coordinator = _coordinator()
-        coordinator.async_update_setting = AsyncMock()
-        number = HausfunkNumber(
-            coordinator,
-            "width",
-            "width",
-            "mdi:resize",
-            160.0,
-            1920.0,
-            1.0,
-            320,
-        )
-        
-        self.assertEqual(number.native_value, 320)
-        self.assertEqual(number.native_min_value, 160.0)
-        self.assertEqual(number.native_max_value, 1920.0)
-        self.assertEqual(number.native_step, 1.0)
-        
-        await number.async_set_native_value(640.0)
-        coordinator.async_update_setting.assert_awaited_once_with("width", 640)
-
-
 class TestCoordinatorUpdateSetting(unittest.IsolatedAsyncioTestCase):
     async def test_update_setting_stream_mode(self):
         coordinator = _coordinator()
@@ -247,17 +222,6 @@ class TestCoordinatorUpdateSetting(unittest.IsolatedAsyncioTestCase):
         await coordinator.async_update_setting("stream_mode", "rtsp")
         self.assertEqual(coordinator.config["stream_mode"], "rtsp")
         coordinator.register_stream.assert_awaited_once_with(persist=True, restart=True)
-
-    async def test_update_setting_pi_param(self):
-        coordinator = _coordinator()
-        
-        with patch("custom_components.hausfunk.coordinator.HausfunkInstaller") as mock_installer:
-            inst = mock_installer.return_value
-            inst.connect_and_update_config = AsyncMock()
-            
-            await coordinator.async_update_setting("width", 640)
-            self.assertEqual(coordinator.config["width"], 640)
-            inst.connect_and_update_config.assert_awaited_once()
 
 
 if __name__ == "__main__":

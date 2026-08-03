@@ -70,6 +70,10 @@ PI_SCHEMA = vol.Schema(
         vol.Required(CONF_STREAM_NAME, default=DEFAULT_STREAM_NAME): str,
         vol.Required(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
         vol.Required(CONF_PI_GO2RTC_PORT, default=DEFAULT_PI_GO2RTC_PORT): int,
+        vol.Required(CONF_WIDTH, default=DEFAULT_WIDTH): int,
+        vol.Required(CONF_HEIGHT, default=DEFAULT_HEIGHT): int,
+        vol.Required(CONF_FPS, default=DEFAULT_FPS): int,
+        vol.Required(CONF_AUDIO_GAIN, default=DEFAULT_AUDIO_GAIN): vol.Coerce(float),
     }
 )
 
@@ -93,6 +97,19 @@ def _pi_connection_options_schema(defaults: dict) -> vol.Schema:
                 CONF_PI_GO2RTC_PORT,
                 default=defaults.get(CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT),
             ): int,
+            vol.Required(
+                CONF_WIDTH, default=defaults.get(CONF_WIDTH, DEFAULT_WIDTH)
+            ): int,
+            vol.Required(
+                CONF_HEIGHT, default=defaults.get(CONF_HEIGHT, DEFAULT_HEIGHT)
+            ): int,
+            vol.Required(
+                CONF_FPS, default=defaults.get(CONF_FPS, DEFAULT_FPS)
+            ): int,
+            vol.Required(
+                CONF_AUDIO_GAIN,
+                default=defaults.get(CONF_AUDIO_GAIN, DEFAULT_AUDIO_GAIN),
+            ): vol.Coerce(float),
         }
     )
 
@@ -122,10 +139,6 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             if not errors:
                 # Populate default runtime/input settings
                 self._data.setdefault(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
-                self._data.setdefault(CONF_WIDTH, DEFAULT_WIDTH)
-                self._data.setdefault(CONF_HEIGHT, DEFAULT_HEIGHT)
-                self._data.setdefault(CONF_FPS, DEFAULT_FPS)
-                self._data.setdefault(CONF_AUDIO_GAIN, DEFAULT_AUDIO_GAIN)
                 return await self.async_step_go2rtc()
         return self.async_show_form(
             step_id="user", data_schema=PI_SCHEMA, errors=errors,

@@ -12,7 +12,11 @@
           "sudo_password": "Sudo-Passwort (falls abweichend, optional)",
           "stream_name": "Stream-Name",
           "rtsp_port": "Pi-RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port"
+          "pi_go2rtc_port": "Pi go2rtc API-Port",
+          "width": "Breite",
+          "height": "Höhe",
+          "fps": "Frames pro Sekunde",
+          "audio_gain": "Mic-Verstärkung"
         }
       },
       "go2rtc": {
@@ -50,7 +54,11 @@
         "data": {
           "stream_name": "Stream-Name",
           "rtsp_port": "Pi-RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port"
+          "pi_go2rtc_port": "Pi go2rtc API-Port",
+          "width": "Breite",
+          "height": "Höhe",
+          "fps": "Frames pro Sekunde",
+          "audio_gain": "Mic-Verstärkung"
         }
       },
       "go2rtc": {
@@ -77,20 +85,6 @@
           "webrtc": "WebRTC",
           "rtsp": "RTSP"
         }
-      }
-    },
-    "number": {
-      "width": {
-        "name": "Breite"
-      },
-      "height": {
-        "name": "Höhe"
-      },
-      "fps": {
-        "name": "Frames pro Sekunde"
-      },
-      "audio_gain": {
-        "name": "Mic-Verstärkung"
       }
     }
   }

@@ -29,7 +29,7 @@ class TestConst(unittest.TestCase):
     def test_platforms(self):
         self.assertEqual(
             set(PLATFORMS),
-            {"binary_sensor", "switch", "camera", "button", "select", "number"},
+            {"binary_sensor", "switch", "camera", "button", "select"},
         )
 
 
