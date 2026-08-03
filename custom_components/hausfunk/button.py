@@ -81,6 +81,7 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
         }
         if getattr(coordinator, "subentry_id", None):
             device_info["subentry_id"] = coordinator.subentry_id
+            device_info["config_subentry_id"] = coordinator.subentry_id
         self._attr_device_info = DeviceInfo(**device_info)
 
     @property

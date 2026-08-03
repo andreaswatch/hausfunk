@@ -18,7 +18,7 @@ import logging
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import (
     CONF_PI_HOST,
@@ -27,6 +27,7 @@ from .const import (
     CONF_PI_USERNAME,
     CONF_SUDO_PASSWORD,
     DOMAIN,
+    NAME,
     PLATFORMS,
 )
 from .coordinator import HausfunkCoordinator
@@ -135,6 +136,19 @@ async def _async_setup_pi(
     merged_config = {**go2rtc_config, **pi_config}
 
     subentry_id = getattr(subentry, "subentry_id", None)
+
+    # Register/update the Pi device in device_registry linked to this subentry
+    if subentry_id:
+        dev_reg = dr.async_get(hass)
+        dev_reg.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            config_subentry_id=subentry_id,
+            identifiers={(DOMAIN, pi_id)},
+            manufacturer=NAME,
+            model="Pi + go2rtc",
+            name=f"Hausfunk Pi ({pi_id})",
+        )
+
     coordinator = HausfunkCoordinator(
         hass, entry, go2rtc_config, pi_config, pi_id=pi_id, subentry_id=subentry_id
     )
