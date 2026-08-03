@@ -1,11 +1,4 @@
-"""Config flow for Hausfunk.
-
-One config entry is a hub holding host-level go2rtc settings. Pi devices are
-added via the native "+ Add Pi" subentry button in the integration row. The
-subentry only stores the Pi config; the device entries are created normally
-via entity ``device_info`` (like Landroid Cloud) — no subentry link on
-devices. The options flow edits only host-level go2rtc settings.
-"""
+"""Config flow for Hausfunk."""
 
 import logging
 
@@ -15,7 +8,6 @@ from homeassistant.components import network as ha_network
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
-    ConfigSubentryFlow,
     OptionsFlow,
 )
 from homeassistant.core import callback
@@ -59,7 +51,6 @@ from .const import (
     DEFAULT_STREAM_NAME,
     DEFAULT_WIDTH,
     DOMAIN,
-    PI_SUBENTRY_TYPE,
     STREAM_MODE_RTSP,
     STREAM_MODE_WEBRTC,
 )
@@ -121,40 +112,85 @@ def _pi_stream_schema(defaults: dict) -> vol.Schema:
 
 
 class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle the host-level config flow (HA go2rtc settings only)."""
+    """Handle the config flow for Hausfunk."""
 
     VERSION = 1
 
-    @staticmethod
-    def async_supports_multiple_entries() -> bool:
-        """Only one hub entry (all Pis are subentries)."""
-        return False
+    def __init__(self) -> None:
+        """Initialize."""
+        self._data = {}
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry):
         return HausfunkOptionsFlow(config_entry)
 
-    @staticmethod
-    @callback
-    def async_get_supported_subentry_types(
-        config_entry: ConfigEntry,
-    ) -> dict[str, type[ConfigSubentryFlow]]:
-        """Provide the native "+ Add Pi" button on the integration row."""
-        return {PI_SUBENTRY_TYPE: HausfunkPiSubentryFlow}
-
     async def async_step_user(self, user_input=None):
-        """Host-level settings: the HA go2rtc instance."""
+        """Add a new Pi: SSH access."""
+        errors = {}
         if user_input is not None:
-            return self.async_create_entry(
-                title="Hausfunk", data=user_input
-            )
+            await self.async_set_unique_id(user_input[CONF_PI_HOST])
+            self._abort_if_unique_id_configured()
+            self._data.update(user_input)
+            errors = await self._validate_pi(user_input)
+            if not errors:
+                return await self.async_step_stream()
+        return self.async_show_form(
+            step_id="user", data_schema=PI_SCHEMA, errors=errors,
+            description_placeholders={"fingerprint": getattr(self, "_fingerprint", "")},
+        )
+
+    async def async_step_stream(self, user_input=None):
+        """Pi stream/camera settings."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_go2rtc()
+        return self.async_show_form(
+            step_id="stream", data_schema=_pi_stream_schema({})
+        )
+
+    async def async_step_go2rtc(self, user_input=None):
+        """Host-level settings: the HA go2rtc instance."""
+        existing_entries = self.hass.config_entries.async_entries(DOMAIN)
+        if existing_entries:
+            # We already have a configured entry. Copy go2rtc settings from it.
+            existing = existing_entries[0]
+            host_keys = [
+                CONF_GO2RTC_URL, CONF_GO2RTC_USERNAME, CONF_GO2RTC_PASSWORD,
+                CONF_GO2RTC_VERSION, CONF_GO2RTC_HOST, CONF_GO2RTC_RTSP_PORT,
+                CONF_GO2RTC_WEBRTC_PORT, CONF_GO2RTC_CANDIDATES
+            ]
+            for key in host_keys:
+                if key in existing.data:
+                    self._data[key] = existing.data[key]
+            return await self.async_step_install()
+
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_install()
+
         schema, detected = await self._detect_go2rtc()
         return self.async_show_form(
-            step_id="user",
+            step_id="go2rtc",
             data_schema=schema,
             description_placeholders={"detected": detected},
         )
+
+    async def async_step_install(self, user_input=None):
+        """Optionally install/configure the Pi right away."""
+        if user_input is not None:
+            install_now = user_input.get(CONF_INSTALL_NOW, True)
+            if install_now:
+                errors = await self._do_install()
+                if errors:
+                    return self.async_show_form(
+                        step_id="install", data_schema=INSTALL_SCHEMA, errors=errors
+                    )
+            return self.async_create_entry(
+                title=f"Hausfunk Pi ({self._data[CONF_PI_HOST]})",
+                data=self._data,
+            )
+        return self.async_show_form(step_id="install", data_schema=INSTALL_SCHEMA)
 
     async def _detect_go2rtc(self) -> tuple[vol.Schema, str]:
         """Try to auto-detect the HA go2rtc instance and LAN IP."""
@@ -198,7 +234,7 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             if lan:
                 defaults[CONF_GO2RTC_HOST] = lan
                 status += f" · LAN-IP {lan} erkannt"
-        except Exception:  # noqa: BLE001 - network helper may be unavailable
+        except Exception:
             pass
 
         schema = vol.Schema(
@@ -214,71 +250,6 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             }
         )
         return schema, status
-
-
-class HausfunkPiSubentryFlow(ConfigSubentryFlow):
-    """Handle adding / editing a Pi device as a subentry."""
-
-    def async_create_entry(self, **kwargs):
-        """Create the subentry and reload the hub so entities appear."""
-        result = super().async_create_entry(**kwargs)
-        entry_id, _subentry_type = self.handler
-        self.hass.config_entries.async_schedule_reload(entry_id)
-        return result
-
-    async def async_step_user(self, user_input=None):
-        """Add a new Pi: SSH access + stream settings."""
-        errors = {}
-        if user_input is not None:
-            self._data = dict(user_input)
-            errors = await self._validate_pi(user_input)
-            if not errors:
-                return await self.async_step_stream()
-        return self.async_show_form(
-            step_id="user", data_schema=PI_SCHEMA, errors=errors,
-            description_placeholders={"fingerprint": getattr(self, "_fingerprint", "")},
-        )
-
-    async def async_step_stream(self, user_input=None):
-        """Pi stream/camera settings."""
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_install()
-        return self.async_show_form(
-            step_id="stream", data_schema=_pi_stream_schema({})
-        )
-
-    async def async_step_install(self, user_input=None):
-        """Optionally install/configure the Pi right away."""
-        if user_input is not None:
-            install_now = user_input.get(CONF_INSTALL_NOW, True)
-            if install_now:
-                errors = await self._do_install()
-                if errors:
-                    return self.async_show_form(
-                        step_id="install", data_schema=INSTALL_SCHEMA, errors=errors
-                    )
-            return self.async_create_entry(
-                title=self._data[CONF_PI_HOST],
-                data=self._data,
-                unique_id=self._data[CONF_PI_HOST],
-            )
-        return self.async_show_form(step_id="install", data_schema=INSTALL_SCHEMA)
-
-    async def async_step_reconfigure(self, user_input=None):
-        """Edit an existing Pi subentry."""
-        subentry = self._get_reconfigure_subentry()
-        current = dict(subentry.data)
-        if user_input is not None:
-            user_input.pop(CONF_INSTALL_NOW, None)
-            return self.async_update_reload_and_abort(
-                self._get_entry(),
-                subentry,
-                data_updates=user_input,
-            )
-        return self.async_show_form(
-            step_id="reconfigure", data_schema=_pi_stream_schema(current)
-        )
 
     async def _validate_pi(self, data: dict) -> dict:
         ssh = PiSSH(
@@ -299,14 +270,11 @@ class HausfunkPiSubentryFlow(ConfigSubentryFlow):
         return {}
 
     async def _do_install(self) -> dict:
-        entry = self._get_entry()
-        host = dict(entry.data)
-        data = {**host, **self._data}
         ssh = PiSSH(
             self._data[CONF_PI_HOST], self._data[CONF_PI_PORT],
             self._data[CONF_PI_USERNAME], self._data[CONF_PI_PASSWORD],
         )
-        installer = HausfunkInstaller(self.hass, ssh, data)
+        installer = HausfunkInstaller(self.hass, ssh, self._data)
         try:
             await installer.install(self._data.get(CONF_SUDO_PASSWORD))
         except PiCommandError as err:
@@ -316,29 +284,16 @@ class HausfunkPiSubentryFlow(ConfigSubentryFlow):
 
 
 class HausfunkOptionsFlow(OptionsFlow):
-    """Handle host-level options (go2rtc settings only)."""
+    """Handle options for Hausfunk Pi (stream + go2rtc)."""
 
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
 
     async def async_step_init(self, user_input=None):
-        current = {**self._entry.data, **self._entry.options}
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_GO2RTC_URL, default=current.get(CONF_GO2RTC_URL, DEFAULT_GO2RTC_URL)): str,
-                vol.Optional(CONF_GO2RTC_USERNAME, default=current.get(CONF_GO2RTC_USERNAME, "")): str,
-                vol.Optional(CONF_GO2RTC_PASSWORD, default=current.get(CONF_GO2RTC_PASSWORD, "")): str,
-                vol.Required(CONF_GO2RTC_VERSION, default=current.get(CONF_GO2RTC_VERSION, DEFAULT_GO2RTC_VERSION)): str,
-                vol.Required(CONF_GO2RTC_HOST, default=current.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST)): str,
-                vol.Required(CONF_GO2RTC_RTSP_PORT, default=current.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT)): int,
-                vol.Required(CONF_GO2RTC_WEBRTC_PORT, default=current.get(CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT)): int,
-                vol.Optional(CONF_GO2RTC_CANDIDATES, default=current.get(CONF_GO2RTC_CANDIDATES, DEFAULT_GO2RTC_CANDIDATES)): str,
-            }
-        )
         if user_input is not None:
-            self.hass.config_entries.async_update_entry(
-                self._entry, data=user_input
-            )
-            await self.hass.config_entries.async_reload(self._entry.entry_id)
-            return self.async_create_entry(data={})
-        return self.async_show_form(step_id="init", data_schema=schema)
+            return self.async_create_entry(title="", data=user_input)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_pi_stream_schema(self._entry.data),
+        )
+

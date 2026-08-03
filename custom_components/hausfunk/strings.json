@@ -2,8 +2,32 @@
   "config": {
     "step": {
       "user": {
+        "title": "Connect Hausfunk Pi",
+        "description": "SSH credentials for the Pi.",
+        "data": {
+          "host": "Pi IP address",
+          "port": "SSH port",
+          "username": "SSH username",
+          "password": "SSH password",
+          "sudo_password": "Sudo password (if different, optional)"
+        }
+      },
+      "stream": {
+        "title": "Camera and stream",
+        "data": {
+          "stream_name": "Stream name",
+          "rtsp_port": "Pi RTSP port",
+          "pi_go2rtc_port": "Pi go2rtc API port",
+          "stream_mode": "Stream mode",
+          "width": "Width",
+          "height": "Height",
+          "fps": "Frames per second",
+          "audio_gain": "Microphone gain"
+        }
+      },
+      "go2rtc": {
         "title": "go2rtc (Home Assistant)",
-        "description": "{detected}. The fields are pre-filled, adjust if needed.",
+        "description": "{detected}. The fields are pre-filled, adjust if needed. This setting applies to all Hausfunk devices.",
         "data": {
           "go2rtc_url": "go2rtc URL",
           "go2rtc_username": "Username (optional)",
@@ -13,6 +37,13 @@
           "go2rtc_rtsp_port": "HA go2rtc RTSP port",
           "go2rtc_webrtc_port": "HA go2rtc WebRTC port",
           "go2rtc_candidates": "WebRTC candidates (optional, comma separated)"
+        }
+      },
+      "install": {
+        "title": "Set up the Pi",
+        "description": "The integration will now install go2rtc on the Pi and enable the service.",
+        "data": {
+          "install_now": "Set up the Pi now"
         }
       }
     },
@@ -22,79 +53,19 @@
       "install_failed": "Pi setup failed. See the logs."
     }
   },
-  "config_subentries": {
-    "pi": {
-      "title": "Hausfunk Pi",
-      "initiate_flow": {
-        "user": "Add Pi device"
-      },
-      "step": {
-        "user": {
-          "title": "Connect Hausfunk Pi",
-          "description": "SSH credentials for the Pi.",
-          "data": {
-            "host": "Pi IP address",
-            "port": "SSH port",
-            "username": "SSH username",
-            "password": "SSH password",
-            "sudo_password": "Sudo password (if different, optional)"
-          }
-        },
-        "stream": {
-          "title": "Camera and stream",
-          "data": {
-            "stream_name": "Stream name",
-            "rtsp_port": "Pi RTSP port",
-            "pi_go2rtc_port": "Pi go2rtc API port",
-            "stream_mode": "Stream mode",
-            "width": "Width",
-            "height": "Height",
-            "fps": "Frames per second",
-            "audio_gain": "Microphone gain"
-          }
-        },
-        "install": {
-          "title": "Set up the Pi",
-          "description": "The integration will now install go2rtc on the Pi and enable the service.",
-          "data": {
-            "install_now": "Set up the Pi now"
-          }
-        },
-        "reconfigure": {
-          "title": "Edit Pi device",
-          "data": {
-            "stream_name": "Stream name",
-            "rtsp_port": "Pi RTSP port",
-            "pi_go2rtc_port": "Pi go2rtc API port",
-            "stream_mode": "Stream mode",
-            "width": "Width",
-            "height": "Height",
-            "fps": "Frames per second",
-            "audio_gain": "Microphone gain"
-          }
-        }
-      },
-      "error": {
-        "cannot_connect": "Could not connect to the Pi. Check IP, username and password.",
-        "cannot_detect_arch": "Could not determine the Pi architecture.",
-        "install_failed": "Pi setup failed. See the logs."
-      }
-    }
-  },
   "options": {
     "step": {
       "init": {
-        "title": "Hausfunk go2rtc settings",
-        "description": "Host-level go2rtc settings. Pi devices are added via the \"Add Pi device\" button on the integration row.",
+        "title": "Edit Hausfunk Pi",
         "data": {
-          "go2rtc_url": "go2rtc URL",
-          "go2rtc_username": "Username (optional)",
-          "go2rtc_password": "Password (optional)",
-          "go2rtc_version": "go2rtc version",
-          "go2rtc_host": "HA go2rtc LAN host (used for WebRTC candidate)",
-          "go2rtc_rtsp_port": "HA go2rtc RTSP port",
-          "go2rtc_webrtc_port": "HA go2rtc WebRTC port",
-          "go2rtc_candidates": "WebRTC candidates (optional, comma separated)"
+          "stream_name": "Stream name",
+          "rtsp_port": "Pi RTSP port",
+          "pi_go2rtc_port": "Pi go2rtc API port",
+          "stream_mode": "Stream mode",
+          "width": "Width",
+          "height": "Height",
+          "fps": "Frames per second",
+          "audio_gain": "Microphone gain"
         }
       }
     }
