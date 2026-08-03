@@ -25,6 +25,10 @@
   "config_subentries": {
     "pi": {
       "title": "Hausfunk Pi",
+      "entry_type": "Hausfunk Pi device",
+      "initiate_flow": {
+        "user": "Add Pi device"
+      },
       "step": {
         "user": {
           "title": "Connect Hausfunk Pi",

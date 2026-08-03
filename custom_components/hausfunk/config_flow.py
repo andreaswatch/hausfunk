@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigSubentryFlow,
+    FlowType,
     OptionsFlow,
 )
 from homeassistant.core import callback
@@ -153,6 +154,18 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             description_placeholders={"detected": detected},
         )
+
+    async def async_on_create_entry(self, result) -> dict:
+        """After creating the host entry, directly start the Pi flow."""
+        subentry_result = await self.hass.config_entries.subentries.async_init(
+            (result["result"].entry_id, PI_SUBENTRY_TYPE),
+            context={"source": "user"},
+        )
+        result["next_flow"] = (
+            FlowType.CONFIG_SUBENTRIES_FLOW,
+            subentry_result["flow_id"],
+        )
+        return result
 
     async def _detect_go2rtc(self) -> tuple[vol.Schema, str]:
         """Try to auto-detect the HA go2rtc instance and LAN IP."""
