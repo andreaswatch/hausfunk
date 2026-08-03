@@ -7,7 +7,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_PI_HOST, DOMAIN
+from .const import CONF_PI_HOST, DOMAIN, NAME
 from .coordinator import HausfunkCoordinator
 
 SENSORS = (
@@ -42,6 +42,9 @@ class HausfunkBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_unique_id = f"hausfunk_{coordinator.pi_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            manufacturer=NAME,
+            model="Pi + go2rtc",
+            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
         )
 
     @property

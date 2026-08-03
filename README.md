@@ -106,10 +106,9 @@ ESPHome); Pis are added as devices inside it.
 ### 2. Add Pi device(s) (per device)
 
 Only the Pis appear as devices; the HA go2rtc host itself is not a device.
-Use the **"Add Pi device"** button on the Hausfunk integration row (like
-ESPHome / BrowserMod / Landroid Cloud: one hub entry with multiple devices).
-Each Pi gets its own device with Edit (pencil) and Remove (trash) buttons.
-The flow asks for the **Pi-specific** settings:
+Open the Hausfunk integration → **Options** → **Add Pi device** to add one or
+more Pis (like ESPHome / BrowserMod / Landroid Cloud: one hub entry with
+multiple devices under it). The flow asks for the **Pi-specific** settings:
 
 | Setting | Description |
 |---------|-------------|
@@ -129,10 +128,10 @@ You can add multiple Pis to one go2rtc host.
 
 ### Edit settings
 
-- **Host (go2rtc):** Integration → Options (URL, version, LAN host, ports,
-  candidates).
-- **Pi device:** the pencil icon on the Pi (stream name, ports, mode,
-  resolution, fps, mic gain); Remove via the trash icon.
+- **Host (go2rtc):** Integration → Options → "go2rtc settings" (URL, version,
+  LAN host, ports, candidates).
+- **Pi devices:** Integration → Options → Add/Remove Pi device (stream name,
+  ports, mode, resolution, fps, mic gain).
 
 ## Services
 

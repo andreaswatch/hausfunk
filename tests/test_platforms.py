@@ -64,8 +64,7 @@ class TestEntities(unittest.TestCase):
             _coordinator(), "pi_reachable", "Erreichbar", "mdi:raspberry-pi"
         )
         self.assertEqual(
-            sensor.device_info,
-            {"identifiers": {(DOMAIN, "192.168.178.11")}},
+            sensor.device_info["identifiers"], {(DOMAIN, "192.168.178.11")}
         )
         self.assertTrue(sensor.is_on)
 
@@ -79,16 +78,14 @@ class TestEntities(unittest.TestCase):
     def test_switch_device_info(self):
         switch = HausfunkStreamSwitch(_coordinator())
         self.assertEqual(
-            switch.device_info,
-            {"identifiers": {(DOMAIN, "192.168.178.11")}},
+            switch.device_info["identifiers"], {(DOMAIN, "192.168.178.11")}
         )
         self.assertTrue(switch.is_on)
 
     def test_camera_device_info(self):
         camera = HausfunkCamera(_coordinator())
         self.assertEqual(
-            camera.device_info,
-            {"identifiers": {(DOMAIN, "192.168.178.11")}},
+            camera.device_info["identifiers"], {(DOMAIN, "192.168.178.11")}
         )
         self.assertTrue(camera.use_stream_for_stills)
 
@@ -104,8 +101,7 @@ class TestEntities(unittest.TestCase):
             _coordinator(), "install_pi", "Pi einrichten", "mdi:raspberry-pi", "install_pi"
         )
         self.assertEqual(
-            button.device_info,
-            {"identifiers": {(DOMAIN, "192.168.178.11")}},
+            button.device_info["identifiers"], {(DOMAIN, "192.168.178.11")}
         )
         self.assertEqual(button.unique_id, "hausfunk_button_192.168.178.11_install_pi")
 

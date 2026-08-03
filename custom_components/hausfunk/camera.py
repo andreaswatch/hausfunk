@@ -15,6 +15,7 @@ from .const import (
     DEFAULT_GO2RTC_HOST,
     DEFAULT_GO2RTC_RTSP_PORT,
     DOMAIN,
+    NAME,
 )
 from .coordinator import HausfunkCoordinator
 
@@ -51,6 +52,9 @@ class HausfunkCamera(CoordinatorEntity, Camera):
         self._attr_supported_features = CameraEntityFeature.STREAM
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            manufacturer=NAME,
+            model="Pi + go2rtc",
+            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
         )
 
     @property

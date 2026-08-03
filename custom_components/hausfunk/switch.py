@@ -7,7 +7,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_PI_HOST, DOMAIN
+from .const import CONF_PI_HOST, DOMAIN, NAME
 from .coordinator import HausfunkCoordinator
 
 
@@ -34,6 +34,9 @@ class HausfunkStreamSwitch(CoordinatorEntity, SwitchEntity):
         self._attr_unique_id = f"hausfunk_stream_switch_{coordinator.pi_id}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            manufacturer=NAME,
+            model="Pi + go2rtc",
+            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
         )
 
     @property
