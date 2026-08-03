@@ -72,5 +72,51 @@ class TestInstallerUninstall(unittest.IsolatedAsyncioTestCase):
             await installer.restart_service()
 
 
+class TestInstallerDownload(unittest.IsolatedAsyncioTestCase):
+    async def test_download_adds_v_prefix_to_version(self):
+        config = dict(CONFIG)
+        config["go2rtc_version"] = "1.9.14"  # stored without "v" prefix
+        installer = HausfunkInstaller(hass=MagicMock(), ssh=MagicMock(), config=config)
+        installer.ssh.run = AsyncMock(return_value=(0, "", ""))
+        installer.ssh.connect = AsyncMock()
+        installer._ensure_dir = AsyncMock()
+        installer._binary_path = "/home/pi/hausfunk/go2rtc"
+
+        # Capture the download URL used in the curl command
+        async def fake_run(cmd, input_data=None, timeout=None):
+            calls.append(cmd)
+            if cmd.startswith("test -s"):
+                return (0, "", "")
+            return (0, "", "")
+        calls = []
+        installer.ssh.run = fake_run
+        await installer._download_binary("arm")
+
+        joined = "\n".join(calls)
+        self.assertIn(
+            "https://github.com/AlexxIT/go2rtc/releases/download/v1.9.14/go2rtc_linux_arm",
+            joined,
+        )
+
+    async def test_download_keeps_existing_v_prefix(self):
+        installer = _installer()  # CONFIG already has "v1.9.14"
+        installer._ensure_dir = AsyncMock()
+        calls = []
+
+        async def fake_run(cmd, input_data=None, timeout=None):
+            calls.append(cmd)
+            if cmd.startswith("test -s"):
+                return (0, "", "")
+            return (0, "", "")
+        installer.ssh.run = fake_run
+        await installer._download_binary("arm")
+
+        joined = "\n".join(calls)
+        self.assertIn(
+            "https://github.com/AlexxIT/go2rtc/releases/download/v1.9.14/go2rtc_linux_arm",
+            joined,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -209,6 +209,10 @@ class HausfunkInstaller:
     async def _download_binary(self, arch: str):
         """Download go2rtc binary with robust error handling."""
         version = self.config[CONF_GO2RTC_VERSION]
+        # The release tag must have a "v" prefix (e.g. "v1.9.14"), but the
+        # value may be stored without it after auto-detection.
+        if not str(version).startswith("v"):
+            version = f"v{version}"
         url = GO2RTC_RELEASE_URL.format(version=version, arch=arch)
         
         await self._ensure_dir()
