@@ -47,6 +47,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_config_entry_first_refresh()
         coordinators[pi_id] = coordinator
 
+        # Register the device manually so it's linked to the subentry.
+        # When entities are created later, they will attach to this device.
+        from homeassistant.helpers import device_registry as dr
+        from .const import NAME
+        
+        device_registry = dr.async_get(hass)
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            config_subentry_id=subentry_id,
+            identifiers={(DOMAIN, pi_id)},
+            manufacturer=NAME,
+            model="Pi + go2rtc",
+            name=f"Hausfunk Pi ({pi_id})",
+        )
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
