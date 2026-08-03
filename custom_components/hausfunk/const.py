@@ -10,6 +10,7 @@ PLATFORMS = ["binary_sensor", "switch", "camera"]
 # Defaults
 DEFAULT_SSH_PORT = 22
 DEFAULT_RTSP_PORT = 8554
+DEFAULT_PI_GO2RTC_PORT = 1984
 DEFAULT_STREAM_NAME = "tuer"
 DEFAULT_GO2RTC_URL = "http://localhost:11984"
 DEFAULT_GO2RTC_VERSION = "v1.9.14"
@@ -42,6 +43,7 @@ CONF_PI_PASSWORD = CONF_PASSWORD
 CONF_SUDO_PASSWORD = "sudo_password"
 CONF_SSH_KEY = "ssh_key"
 CONF_RTSP_PORT = "rtsp_port"
+CONF_PI_GO2RTC_PORT = "pi_go2rtc_port"
 CONF_STREAM_NAME = "stream_name"
 CONF_WIDTH = "width"
 CONF_HEIGHT = "height"

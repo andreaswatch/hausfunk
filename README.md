@@ -15,25 +15,28 @@ over standard protocols (RTSP + go2rtc). No SSH in steady state.
 ## Architecture
 
 ```
-Pi Zero 2W ──(go2rtc, RTSP server :8554)──▶ HA go2rtc ──(WebRTC)──▶ Browser / Lovelace
+Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Browser / Lovelace
   ├─ rpicam-vid … -o -                     # H264 video (hardware)
   ├─ ffmpeg pulse → Opus → {output}        # microphone
   └─ ffmpeg alaw ← pipe:0 #backchannel=1   # speaker (talk)
 ```
 
-- The Pi runs a **minimal go2rtc without WebRTC** (no `webrtc:`/`api:` modules) —
-  it is a lightweight RTSP relay, so the Pi's CPU/RAM load stays low.
-- Home Assistant's existing go2rtc pulls the stream via
-  `rtsp://<pi>:8554/<name>#backchannel=1` and provides the low-latency WebRTC
-  front end. The integration registers the stream in the HA go2rtc instance
-  via its API and persists it to go2rtc's config.
+- The Pi runs a **minimal go2rtc** — an RTSP server (`:8554`), plus go2rtc's
+  default API (`:1984`) and WebRTC (`:8555`) endpoints used for signaling and
+  the two-way audio relay. It stays lightweight (no WebRTC config tuning).
+- Home Assistant's go2rtc pulls the stream via a **go2rtc-to-go2rtc WebRTC
+  client link** (`webrtc:ws://<pi>:1984/api/ws?src=<name>`). Unlike a plain
+  RTSP pull, this reliably exposes the Pi's RTSP backchannel to WebRTC
+  clients (browser microphone → speaker) in both directions. The integration
+  registers and persists this source in the HA go2rtc instance via its API.
 - **Camera entity:** the integration exposes its own `camera.<stream_name>`
   entity whose `stream_source` points at the HA-local go2rtc RTSP server
   (`rtsp://127.0.0.1:18554/<name>`), so the browser reaches the Pi only via
   the HA go2rtc WebRTC proxy — never directly. No Generic Camera needed.
-- **Two-way audio** works end to end: browser → HA go2rtc → RTSP backchannel
-  → Pi go2rtc → `exec` stdin → ffmpeg → speaker. For the talk-back button use
-  the [advanced-camera-card](https://github.com/dermotduffy/advanced-camera-card)
+- **Two-way audio** works end to end: browser → HA go2rtc (WebRTC) → Pi
+  go2rtc (WebRTC) → `exec` stdin → ffmpeg → speaker, and the mic in the
+  opposite direction. For the talk-back button use the
+  [advanced-camera-card](https://github.com/dermotduffy/advanced-camera-card)
   with the registered stream name and `backchannel`.
 
 ## Features
@@ -56,8 +59,8 @@ Pi Zero 2W ──(go2rtc, RTSP server :8554)──▶ HA go2rtc ──(WebRTC)�
 - **Home Assistant** (2024.11+) with a running **go2rtc** instance reachable at
   `http://localhost:1984` (e.g. the [go2rtc add-on](https://github.com/AlexxIT/go2rtc)
   or the HA go2rtc integration).
-- go2rtc version on the Pi must support RTSP server backchannel
-  (**≥ v1.9.x**, [PR #1432](https://github.com/AlexxIT/go2rtc/pull/1432)).
+- go2rtc on the Pi must support the RTSP server backchannel and the go2rtc
+  WebRTC signaling (`webrtc:ws://.../api/ws`) — **≥ v1.9.x**.
 
 ## Installation
 
@@ -82,7 +85,9 @@ Pi Zero 2W ──(go2rtc, RTSP server :8554)──▶ HA go2rtc ──(WebRTC)�
    for "Hausfunk".
 2. **Connect Pi:** Pi IP address, SSH port, SSH username, SSH password
    (and sudo password if different from the SSH password).
-3. **Camera and stream:** stream name, RTSP port, width, height, fps, mic gain.
+3. **Camera and stream:** stream name, RTSP port, Pi go2rtc API port
+   (default `1984`, used for the `webrtc:ws://` relay), width, height, fps,
+   mic gain.
 4. **go2rtc:** URL of the HA go2rtc instance (e.g. `http://localhost:11984`
    with the HA add-on / built-in go2rtc), optional credentials, go2rtc
    version to install on the Pi, plus the HA go2rtc RTSP host and port

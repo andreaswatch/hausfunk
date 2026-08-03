@@ -11,9 +11,10 @@ from .const import (
     CONF_GO2RTC_PASSWORD,
     CONF_GO2RTC_URL,
     CONF_GO2RTC_USERNAME,
+    CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
-    CONF_RTSP_PORT,
     CONF_STREAM_NAME,
+    DEFAULT_PI_GO2RTC_PORT,
     DOMAIN,
 )
 from .go2rtc.client import Go2rtcClient, Go2rtcError
@@ -39,9 +40,18 @@ class HausfunkCoordinator(DataUpdateCoordinator):
 
     @property
     def stream_url(self) -> str:
+        """HA go2rtc source URL for the Pi stream.
+
+        Uses a go2rtc-to-go2rtc WebRTC client link (webrtc:ws://.../api/ws)
+        instead of plain RTSP, because that is the only way the HA go2rtc
+        reliably exposes the Pi's RTSP backchannel to WebRTC clients.
+        """
+        pi_go2rtc_port = self.config.get(
+            CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT
+        )
         return (
-            f"rtsp://{self.config[CONF_PI_HOST]}:{self.config[CONF_RTSP_PORT]}"
-            f"/{self.config[CONF_STREAM_NAME]}#backchannel=1"
+            f"webrtc:ws://{self.config[CONF_PI_HOST]}:{pi_go2rtc_port}/api/ws"
+            f"?src={self.config[CONF_STREAM_NAME]}"
         )
 
     async def register_stream(self):

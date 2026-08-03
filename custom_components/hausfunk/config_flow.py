@@ -18,6 +18,7 @@ from .const import (
     CONF_GO2RTC_VERSION,
     CONF_HEIGHT,
     CONF_INSTALL_NOW,
+    CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
     CONF_PI_PASSWORD,
     CONF_PI_PORT,
@@ -33,6 +34,7 @@ from .const import (
     DEFAULT_GO2RTC_URL,
     DEFAULT_GO2RTC_VERSION,
     DEFAULT_HEIGHT,
+    DEFAULT_PI_GO2RTC_PORT,
     DEFAULT_RTSP_PORT,
     DEFAULT_SSH_PORT,
     DEFAULT_STREAM_NAME,
@@ -58,6 +60,9 @@ STREAM_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_STREAM_NAME, default=DEFAULT_STREAM_NAME): str,
         vol.Required(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
+        vol.Required(
+            CONF_PI_GO2RTC_PORT, default=DEFAULT_PI_GO2RTC_PORT
+        ): int,
         vol.Required(CONF_WIDTH, default=DEFAULT_WIDTH): int,
         vol.Required(CONF_HEIGHT, default=DEFAULT_HEIGHT): int,
         vol.Required(CONF_FPS, default=DEFAULT_FPS): int,
@@ -184,6 +189,7 @@ class HausfunkOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_SUDO_PASSWORD, default=current.get(CONF_SUDO_PASSWORD, "")): str,
                 vol.Required(CONF_STREAM_NAME, default=current.get(CONF_STREAM_NAME, DEFAULT_STREAM_NAME)): str,
                 vol.Required(CONF_RTSP_PORT, default=current.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)): int,
+                vol.Required(CONF_PI_GO2RTC_PORT, default=current.get(CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT)): int,
                 vol.Required(CONF_WIDTH, default=current.get(CONF_WIDTH, DEFAULT_WIDTH)): int,
                 vol.Required(CONF_HEIGHT, default=current.get(CONF_HEIGHT, DEFAULT_HEIGHT)): int,
                 vol.Required(CONF_FPS, default=current.get(CONF_FPS, DEFAULT_FPS)): int,
