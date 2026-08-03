@@ -12,19 +12,6 @@
           "sudo_password": "Sudo-Passwort (falls abweichend, optional)"
         }
       },
-      "stream": {
-        "title": "Kamera und Stream",
-        "data": {
-          "stream_name": "Stream-Name",
-          "rtsp_port": "RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port",
-          "stream_mode": "Stream-Modus",
-          "width": "Breite",
-          "height": "Höhe",
-          "fps": "Frames pro Sekunde",
-          "audio_gain": "Mic-Verstärkung"
-        }
-      },
       "go2rtc": {
         "title": "go2rtc (Home Assistant)",
         "description": "{detected}. Die Felder sind vorbefüllt, bei Bedarf anpassen.",
@@ -45,15 +32,36 @@
         "data": {
           "install_now": "Pi jetzt einrichten"
         }
-      },
-      "init": {
-        "title": "Hausfunk Optionen"
       }
     },
     "error": {
       "cannot_connect": "Verbindung zur Pi fehlgeschlagen. Prüfe IP, Benutzer und Passwort.",
       "cannot_detect_arch": "Architektur der Pi konnte nicht ermittelt werden.",
       "install_failed": "Einrichtung der Pi fehlgeschlagen. Siehe Logs."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hausfunk Geräteeinstellungen",
+        "description": "Pi-spezifische Einstellungen für dieses Gerät.",
+        "data": {
+          "stream_name": "Stream-Name",
+          "rtsp_port": "Pi-RTSP-Port",
+          "pi_go2rtc_port": "Pi go2rtc API-Port",
+          "stream_mode": "Stream-Modus",
+          "width": "Breite",
+          "height": "Höhe",
+          "fps": "Frames pro Sekunde",
+          "audio_gain": "Mic-Verstärkung",
+          "host": "Pi IP-Adresse",
+          "port": "SSH-Port",
+          "username": "SSH-Benutzer",
+          "password": "SSH-Passwort",
+          "sudo_password": "Sudo-Passwort (falls abweichend, optional)",
+          "install_now": "Einstellungen jetzt auf der Pi anwenden"
+        }
+      }
     }
   }
 }

@@ -66,40 +66,6 @@ PI_SCHEMA = vol.Schema(
     }
 )
 
-STREAM_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_STREAM_NAME, default=DEFAULT_STREAM_NAME): str,
-        vol.Required(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
-        vol.Required(
-            CONF_PI_GO2RTC_PORT, default=DEFAULT_PI_GO2RTC_PORT
-        ): int,
-        vol.Required(CONF_STREAM_MODE, default=DEFAULT_STREAM_MODE): vol.In(
-            [STREAM_MODE_WEBRTC, STREAM_MODE_RTSP]
-        ),
-        vol.Required(CONF_WIDTH, default=DEFAULT_WIDTH): int,
-        vol.Required(CONF_HEIGHT, default=DEFAULT_HEIGHT): int,
-        vol.Required(CONF_FPS, default=DEFAULT_FPS): int,
-        vol.Required(CONF_AUDIO_GAIN, default=DEFAULT_AUDIO_GAIN): vol.Coerce(float),
-    }
-)
-
-GO2RTC_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_GO2RTC_URL, default=DEFAULT_GO2RTC_URL): str,
-        vol.Optional(CONF_GO2RTC_USERNAME, default=""): str,
-        vol.Optional(CONF_GO2RTC_PASSWORD, default=""): str,
-        vol.Required(CONF_GO2RTC_VERSION, default=DEFAULT_GO2RTC_VERSION): str,
-        vol.Required(CONF_GO2RTC_HOST, default=DEFAULT_GO2RTC_HOST): str,
-        vol.Required(CONF_GO2RTC_RTSP_PORT, default=DEFAULT_GO2RTC_RTSP_PORT): int,
-        vol.Required(
-            CONF_GO2RTC_WEBRTC_PORT, default=DEFAULT_GO2RTC_WEBRTC_PORT
-        ): int,
-        vol.Optional(
-            CONF_GO2RTC_CANDIDATES, default=DEFAULT_GO2RTC_CANDIDATES
-        ): str,
-    }
-)
-
 INSTALL_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_INSTALL_NOW, default=True): bool,
@@ -119,20 +85,25 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            self._data = dict(user_input)
+            # apply stream/device defaults (editable later in the device options)
+            self._data = {
+                CONF_STREAM_NAME: DEFAULT_STREAM_NAME,
+                CONF_RTSP_PORT: DEFAULT_RTSP_PORT,
+                CONF_PI_GO2RTC_PORT: DEFAULT_PI_GO2RTC_PORT,
+                CONF_STREAM_MODE: DEFAULT_STREAM_MODE,
+                CONF_WIDTH: DEFAULT_WIDTH,
+                CONF_HEIGHT: DEFAULT_HEIGHT,
+                CONF_FPS: DEFAULT_FPS,
+                CONF_AUDIO_GAIN: DEFAULT_AUDIO_GAIN,
+                **dict(user_input),
+            }
             errors = await self._validate_pi(user_input)
             if not errors:
-                return await self.async_step_stream()
+                return await self.async_step_go2rtc()
         return self.async_show_form(
             step_id="user", data_schema=PI_SCHEMA, errors=errors,
             description_placeholders={"fingerprint": getattr(self, "_fingerprint", "")},
         )
-
-    async def async_step_stream(self, user_input=None):
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_go2rtc()
-        return self.async_show_form(step_id="stream", data_schema=STREAM_SCHEMA)
 
     async def async_step_go2rtc(self, user_input=None):
         if user_input is not None:
@@ -265,7 +236,7 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class HausfunkOptionsFlow(OptionsFlow):
-    """Handle Hausfunk options."""
+    """Handle Hausfunk device options (Pi-specific settings)."""
 
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
@@ -275,11 +246,7 @@ class HausfunkOptionsFlow(OptionsFlow):
         current = _all_options(self._entry)
         schema = vol.Schema(
             {
-                vol.Required(CONF_PI_HOST, default=current.get(CONF_PI_HOST)): str,
-                vol.Required(CONF_PI_PORT, default=current.get(CONF_PI_PORT, DEFAULT_SSH_PORT)): int,
-                vol.Required(CONF_PI_USERNAME, default=current.get(CONF_PI_USERNAME)): str,
-                vol.Required(CONF_PI_PASSWORD, default=current.get(CONF_PI_PASSWORD, "")): str,
-                vol.Optional(CONF_SUDO_PASSWORD, default=current.get(CONF_SUDO_PASSWORD, "")): str,
+                # --- Device / Pi settings ---
                 vol.Required(CONF_STREAM_NAME, default=current.get(CONF_STREAM_NAME, DEFAULT_STREAM_NAME)): str,
                 vol.Required(CONF_RTSP_PORT, default=current.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)): int,
                 vol.Required(CONF_PI_GO2RTC_PORT, default=current.get(CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT)): int,
@@ -290,24 +257,32 @@ class HausfunkOptionsFlow(OptionsFlow):
                 vol.Required(CONF_HEIGHT, default=current.get(CONF_HEIGHT, DEFAULT_HEIGHT)): int,
                 vol.Required(CONF_FPS, default=current.get(CONF_FPS, DEFAULT_FPS)): int,
                 vol.Required(CONF_AUDIO_GAIN, default=current.get(CONF_AUDIO_GAIN, DEFAULT_AUDIO_GAIN)): vol.Coerce(float),
-                vol.Required(CONF_GO2RTC_URL, default=current.get(CONF_GO2RTC_URL, DEFAULT_GO2RTC_URL)): str,
-                vol.Optional(CONF_GO2RTC_USERNAME, default=current.get(CONF_GO2RTC_USERNAME, "")): str,
-                vol.Optional(CONF_GO2RTC_PASSWORD, default=current.get(CONF_GO2RTC_PASSWORD, "")): str,
-                vol.Required(CONF_GO2RTC_VERSION, default=current.get(CONF_GO2RTC_VERSION, DEFAULT_GO2RTC_VERSION)): str,
-                vol.Required(CONF_GO2RTC_HOST, default=current.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST)): str,
-                vol.Required(CONF_GO2RTC_RTSP_PORT, default=current.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT)): int,
-                vol.Required(CONF_GO2RTC_WEBRTC_PORT, default=current.get(CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT)): int,
-                vol.Optional(CONF_GO2RTC_CANDIDATES, default=current.get(CONF_GO2RTC_CANDIDATES, DEFAULT_GO2RTC_CANDIDATES)): str,
+                # --- SSH access for Pi administration ---
+                vol.Required(CONF_PI_HOST, default=current.get(CONF_PI_HOST)): str,
+                vol.Required(CONF_PI_PORT, default=current.get(CONF_PI_PORT, DEFAULT_SSH_PORT)): int,
+                vol.Required(CONF_PI_USERNAME, default=current.get(CONF_PI_USERNAME)): str,
+                vol.Required(CONF_PI_PASSWORD, default=current.get(CONF_PI_PASSWORD, "")): str,
+                vol.Optional(CONF_SUDO_PASSWORD, default=current.get(CONF_SUDO_PASSWORD, "")): str,
                 vol.Required(CONF_INSTALL_NOW, default=False): bool,
             }
         )
         if user_input is not None:
             install_now = user_input.pop(CONF_INSTALL_NOW, False)
+            # keep host-level go2rtc settings untouched
+            host_opts = {
+                k: v for k, v in _all_options(self._entry).items()
+                if k in (
+                    CONF_GO2RTC_URL, CONF_GO2RTC_USERNAME, CONF_GO2RTC_PASSWORD,
+                    CONF_GO2RTC_VERSION, CONF_GO2RTC_HOST, CONF_GO2RTC_RTSP_PORT,
+                    CONF_GO2RTC_WEBRTC_PORT, CONF_GO2RTC_CANDIDATES,
+                )
+            }
             self.hass.config_entries.async_update_entry(
-                self._entry, options=user_input
+                self._entry, options={**host_opts, **user_input}
             )
             if install_now:
-                errors = await self._do_install(dict(user_input))
+                data = {**self._entry.data, **user_input, **host_opts}
+                errors = await self._do_install(data)
                 if errors:
                     return self.async_show_form(
                         step_id="init", data_schema=schema, errors=errors

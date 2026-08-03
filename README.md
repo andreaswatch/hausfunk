@@ -81,17 +81,15 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
 
 ## Configuration
 
+### Initial setup (host-level)
+
 1. Go to **Settings → Devices & Services** and click **Add Integration**, search
    for "Hausfunk".
 2. **Connect Pi:** Pi IP address, SSH port, SSH username, SSH password
    (and sudo password if different from the SSH password).
-3. **Camera and stream:** stream name, RTSP port, Pi go2rtc API port
-   (default `1984`, used for the `webrtc:ws://` relay), **stream mode**
-   (`webrtc` = go2rtc-to-go2rtc WebRTC relay, recommended for reliable
-   two-way audio; `rtsp` = direct RTSP pull), width, height, fps, mic gain.
-4. **go2rtc:** the integration tries to **auto-detect** the HA go2rtc
-   instance (known local endpoints) and the HA host's LAN IP. Detected values
-   are pre-filled and shown in the form; adjust them if needed:
+3. **go2rtc (Home Assistant):** the integration tries to **auto-detect** the HA
+   go2rtc instance (known local endpoints) and the HA host's LAN IP. Detected
+   values are pre-filled and shown in the form; adjust them if needed:
    go2rtc URL, optional credentials, go2rtc version, **HA go2rtc LAN host**
    (used for the WebRTC candidate), RTSP port, WebRTC port.
 
@@ -104,12 +102,28 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
 
    If you run a standalone go2rtc without the `1` prefix, set the RTSP port
    to `8554` instead.
-5. **Install:** optionally set up the Pi right away (downloads go2rtc, writes
+4. **Install:** optionally set up the Pi right away (downloads go2rtc, writes
    config + service, enables it).
 
 Afterwards the `camera.<stream_name>` entity appears on the Hausfunk Pi device
 and the stream `<stream_name>` is registered in HA go2rtc (including the
 `preload` entry and the WebRTC section so the two-way audio relay works).
+
+### Device settings (per Pi)
+
+Open the **Hausfunk Pi** device → **Settings → Options** to adjust the
+Pi-specific settings:
+
+| Setting | Description |
+|---------|-------------|
+| Stream name | Name of the stream in go2rtc (default `tuer`) |
+| Pi RTSP port | RTSP server port on the Pi (default `8554`) |
+| Pi go2rtc API port | go2rtc API port on the Pi (default `1984`) |
+| Stream mode | `webrtc` (relay, recommended) or `rtsp` (direct pull) |
+| Width / Height / FPS | Camera resolution and frame rate |
+| Microphone gain | Mic amplification on the Pi |
+| SSH access | Pi IP, SSH port, username, password, sudo password |
+| Apply settings to the Pi now | Re-run the Pi installer with the new settings |
 
 ## Services
 
