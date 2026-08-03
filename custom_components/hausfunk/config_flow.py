@@ -137,7 +137,10 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_stream()
         return self.async_show_form(
             step_id="user", data_schema=PI_SCHEMA, errors=errors,
-            description_placeholders={"fingerprint": getattr(self, "_fingerprint", "")},
+            description_placeholders={
+                "fingerprint": getattr(self, "_fingerprint", ""),
+                "detected": "",  # Fallback for cached frontend translations (v0.6.2)
+            },
         )
 
     async def async_step_stream(self, user_input=None):
