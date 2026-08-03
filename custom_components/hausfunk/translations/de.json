@@ -2,6 +2,20 @@
   "config": {
     "step": {
       "user": {
+        "title": "go2rtc (Home Assistant)",
+        "description": "{detected}. Die Felder sind vorbefüllt, bei Bedarf anpassen. Diese Einstellung gilt für alle Hausfunk-Geräte.",
+        "data": {
+          "go2rtc_url": "go2rtc URL",
+          "go2rtc_username": "Benutzer (optional)",
+          "go2rtc_password": "Passwort (optional)",
+          "go2rtc_version": "go2rtc-Version",
+          "go2rtc_host": "HA go2rtc LAN-Host (für WebRTC-Candidate)",
+          "go2rtc_rtsp_port": "HA go2rtc RTSP-Port",
+          "go2rtc_webrtc_port": "HA go2rtc WebRTC-Port",
+          "go2rtc_candidates": "WebRTC-Candidates (optional, kommagetrennt)"
+        }
+      },
+      "pi": {
         "title": "Hausfunk Pi verbinden",
         "description": "SSH-Zugangsdaten und Stream-Details für die Pi.",
         "data": {
@@ -17,20 +31,6 @@
           "height": "Höhe",
           "fps": "Frames pro Sekunde",
           "audio_gain": "Mic-Verstärkung"
-        }
-      },
-      "go2rtc": {
-        "title": "go2rtc (Home Assistant)",
-        "description": "{detected}. Die Felder sind vorbefüllt, bei Bedarf anpassen. Diese Einstellung gilt für alle Hausfunk-Geräte.",
-        "data": {
-          "go2rtc_url": "go2rtc URL",
-          "go2rtc_username": "Benutzer (optional)",
-          "go2rtc_password": "Passwort (optional)",
-          "go2rtc_version": "go2rtc-Version",
-          "go2rtc_host": "HA go2rtc LAN-Host (für WebRTC-Candidate)",
-          "go2rtc_rtsp_port": "HA go2rtc RTSP-Port",
-          "go2rtc_webrtc_port": "HA go2rtc WebRTC-Port",
-          "go2rtc_candidates": "WebRTC-Candidates (optional, kommagetrennt)"
         }
       },
       "install": {
