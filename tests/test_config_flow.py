@@ -117,6 +117,12 @@ class TestConfigFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res["type"], "create_entry")
         self.assertEqual(res["title"], "Hausfunk Sprechanlage")
 
+    def test_async_get_supported_subentry_types(self):
+        """Verify subentry flow type mapping for HausfunkPiSubentryFlow."""
+        subentry_types = HausfunkConfigFlow.async_get_supported_subentry_types(MagicMock())
+        self.assertIn("pi", subentry_types)
+        self.assertEqual(subentry_types["pi"], HausfunkPiSubentryFlow)
+
 
 class TestPiSubentryFlow(unittest.IsolatedAsyncioTestCase):
     async def test_pi_step_shows_form(self):

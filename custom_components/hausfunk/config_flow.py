@@ -189,7 +189,12 @@ class HausfunkPiSubentryFlow(ConfigSubentryFlow):
             self._data[CONF_PI_USERNAME], self._data[CONF_PI_PASSWORD],
         )
         # Merge go2rtc config from parent hub entry
-        parent_entry = self.hass.config_entries.async_get_entry(self.config_entry_id)
+        try:
+            parent_entry = self._get_entry()
+        except Exception:
+            parent_entry = getattr(self, "hass", MagicMock()).config_entries.async_get_entry(
+                getattr(self, "config_entry_id", None)
+            )
         merged_config = {**(parent_entry.data if parent_entry else {}), **self._data}
         installer = HausfunkInstaller(self.hass, ssh, merged_config)
         try:
@@ -213,6 +218,14 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     SUBENTRY_FLOWS = {PI_SUBENTRY_TYPE: HausfunkPiSubentryFlow}
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry: ConfigEntry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        """Return subentries supported by this integration."""
+        return {PI_SUBENTRY_TYPE: HausfunkPiSubentryFlow}
 
     def __init__(self) -> None:
         """Initialize."""
