@@ -41,12 +41,15 @@ class HausfunkStreamSwitch(CoordinatorEntity, SwitchEntity):
         self._attr_name = "Stream registriert"
         self._attr_icon = "mdi:cast"
         self._attr_unique_id = f"hausfunk_stream_switch_{coordinator.pi_id}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
-            manufacturer=NAME,
-            model="Pi + go2rtc",
-            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
-        )
+        device_info = {
+            "identifiers": {(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            "manufacturer": NAME,
+            "model": "Pi + go2rtc",
+            "name": f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
+        }
+        if getattr(coordinator, "subentry_id", None):
+            device_info["subentry_id"] = coordinator.subentry_id
+        self._attr_device_info = DeviceInfo(**device_info)
 
     @property
     def is_on(self) -> bool | None:

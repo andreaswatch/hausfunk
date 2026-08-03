@@ -55,12 +55,15 @@ class HausfunkBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_name = name
         self._attr_icon = icon
         self._attr_unique_id = f"hausfunk_{coordinator.pi_id}_{key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
-            manufacturer=NAME,
-            model="Pi + go2rtc",
-            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
-        )
+        device_info = {
+            "identifiers": {(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            "manufacturer": NAME,
+            "model": "Pi + go2rtc",
+            "name": f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
+        }
+        if getattr(coordinator, "subentry_id", None):
+            device_info["subentry_id"] = coordinator.subentry_id
+        self._attr_device_info = DeviceInfo(**device_info)
 
     @property
     def is_on(self) -> bool | None:

@@ -59,12 +59,15 @@ class HausfunkCamera(CoordinatorEntity, Camera):
         self._attr_icon = "mdi:cctv"
         self._attr_unique_id = f"hausfunk_camera_{coordinator.pi_id}"
         self._attr_supported_features = CameraEntityFeature.STREAM
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
-            manufacturer=NAME,
-            model="Pi + go2rtc",
-            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
-        )
+        device_info = {
+            "identifiers": {(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            "manufacturer": NAME,
+            "model": "Pi + go2rtc",
+            "name": f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
+        }
+        if getattr(coordinator, "subentry_id", None):
+            device_info["subentry_id"] = coordinator.subentry_id
+        self._attr_device_info = DeviceInfo(**device_info)
 
     @property
     def available(self) -> bool:

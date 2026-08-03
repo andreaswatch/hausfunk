@@ -50,6 +50,7 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         host_config: dict,
         pi_config: dict,
         pi_id: str | None = None,
+        subentry_id: str | None = None,
     ):
         super().__init__(
             hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL
@@ -58,6 +59,7 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         self.host_config = host_config
         self.pi_config = pi_config
         self.pi_id = pi_id
+        self.subentry_id = subentry_id
         self.config = {**host_config, **pi_config}
         self.go2rtc = Go2rtcClient(
             url=host_config[CONF_GO2RTC_URL],

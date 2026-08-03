@@ -134,8 +134,9 @@ async def _async_setup_pi(
     # Merge go2rtc config into pi_config so the coordinator has everything
     merged_config = {**go2rtc_config, **pi_config}
 
+    subentry_id = getattr(subentry, "subentry_id", None)
     coordinator = HausfunkCoordinator(
-        hass, entry, go2rtc_config, pi_config, pi_id=pi_id
+        hass, entry, go2rtc_config, pi_config, pi_id=pi_id, subentry_id=subentry_id
     )
     await coordinator.register_stream()
     await coordinator.async_config_entry_first_refresh()

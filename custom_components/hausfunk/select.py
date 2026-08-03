@@ -48,12 +48,15 @@ class HausfunkStreamModeSelect(CoordinatorEntity, SelectEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"hausfunk_{coordinator.pi_id}_stream_mode"
         self._attr_options = [STREAM_MODE_WEBRTC, STREAM_MODE_RTSP]
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config[CONF_PI_HOST])},
-            manufacturer=NAME,
-            model="Pi + go2rtc",
-            name=f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
-        )
+        device_info = {
+            "identifiers": {(DOMAIN, coordinator.config[CONF_PI_HOST])},
+            "manufacturer": NAME,
+            "model": "Pi + go2rtc",
+            "name": f"Hausfunk Pi ({coordinator.config[CONF_PI_HOST]})",
+        }
+        if getattr(coordinator, "subentry_id", None):
+            device_info["subentry_id"] = coordinator.subentry_id
+        self._attr_device_info = DeviceInfo(**device_info)
 
     @property
     def current_option(self) -> str | None:
