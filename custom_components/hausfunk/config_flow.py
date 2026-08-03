@@ -117,7 +117,7 @@ def _pi_stream_schema(defaults: dict) -> vol.Schema:
 class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the host-level config flow (HA go2rtc settings only)."""
 
-    VERSION = 5
+    VERSION = 1
 
     @staticmethod
     def async_supports_multiple_entries() -> bool:

@@ -64,24 +64,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old entries to the hub + devices model (options[PIS])."""
-    if entry.version == 4:
-        # v4 stored Pi data in subentries -> move into options[PIS]
-        pis = {}
-        for subentry in entry.subentries.values():
-            if subentry.subentry_type == "pi":
-                pi_data = dict(subentry.data)
-                pis[pi_data.get(CONF_PI_HOST)] = pi_data
-        options = dict(entry.options)
-        options[PIS] = {**options.get(PIS, {}), **pis}
-        hass.config_entries.async_update_entry(
-            entry, data=dict(entry.data), options=options, version=5
-        )
-        return True
-    return True
-
-
 _SERVICE_NAMES = (
     "setup_pi",
     "update_pi",
