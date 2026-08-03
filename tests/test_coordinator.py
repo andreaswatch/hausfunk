@@ -39,7 +39,7 @@ class TestCoordinator(unittest.TestCase):
             hass=None,
             host_config=HOST_CONFIG,
             pi_config=pi,
-            subentry_id="sub1",
+            pi_id="192.168.178.11",
         )
 
     def test_stream_url_webrtc_go2rtc(self):
@@ -80,7 +80,7 @@ class TestCoordinator(unittest.TestCase):
             "go2rtc-ha.moers.webredirect.org:8555, 192.168.178.21:8555"
         )
         coordinator = HausfunkCoordinator(
-            hass=None, host_config=host, pi_config=dict(PI_CONFIG), subentry_id="sub1"
+            hass=None, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
         )
         self.assertEqual(
             coordinator.webrtc_candidates,
@@ -91,7 +91,7 @@ class TestCoordinator(unittest.TestCase):
         host = dict(HOST_CONFIG)
         host[CONF_GO2RTC_HOST] = "127.0.0.1"
         coordinator = HausfunkCoordinator(
-            hass=None, host_config=host, pi_config=dict(PI_CONFIG), subentry_id="sub1"
+            hass=None, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
         )
         self.assertIsNone(coordinator.webrtc_candidates)
 

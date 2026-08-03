@@ -52,7 +52,7 @@ def _coordinator(data=None):
         hass=MagicMock(),
         host_config=dict(HOST_CONFIG),
         pi_config=dict(PI_CONFIG),
-        subentry_id="sub1",
+        pi_id="192.168.178.11",
     )
     coordinator.data = data or {"pi_reachable": True, "stream_active": True}
     return coordinator
@@ -107,7 +107,7 @@ class TestEntities(unittest.TestCase):
             button.device_info,
             {"identifiers": {(DOMAIN, "192.168.178.11")}},
         )
-        self.assertEqual(button.unique_id, "hausfunk_button_sub1_install_pi")
+        self.assertEqual(button.unique_id, "hausfunk_button_192.168.178.11_install_pi")
 
     def test_button_has_entity_name(self):
         button = HausfunkButton(
@@ -136,7 +136,7 @@ class TestCameraAsync(unittest.IsolatedAsyncioTestCase):
         host[CONF_GO2RTC_HOST] = "10.0.0.5"
         host[CONF_GO2RTC_RTSP_PORT] = 8554
         coordinator = HausfunkCoordinator(
-            hass=None, host_config=host, pi_config=dict(PI_CONFIG), subentry_id="sub1"
+            hass=None, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
         )
         coordinator.data = {"pi_reachable": True, "stream_active": True}
         camera = HausfunkCamera(coordinator)

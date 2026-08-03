@@ -2,52 +2,52 @@ setup_pi:
   name: Pi einrichten
   description: Installiert oder aktualisiert die Pi-Seite (go2rtc, Config, systemd-Service) per SSH.
   fields:
-    subentry_id:
+    pi_id:
       name: Geräte-ID
-      description: Subentry-ID des Pi (optional, bei nur einem Gerät nicht nötig).
+      description: Pi-ID des Pi (optional, bei nur einem Gerät nicht nötig).
       example: ""
 
 update_pi:
   name: Pi aktualisieren
   description: Aktualisiert das go2rtc-Binary auf der Pi auf die konfigurierte Version und startet den Dienst neu.
   fields:
-    subentry_id:
+    pi_id:
       name: Geräte-ID
-      description: Subentry-ID des Pi (optional, bei nur einem Gerät nicht nötig).
+      description: Pi-ID des Pi (optional, bei nur einem Gerät nicht nötig).
       example: ""
 
 uninstall_pi:
   name: Pi deinstallieren
   description: Stoppt und deaktiviert den Pi-Dienst und entfernt Config und Binary.
   fields:
-    subentry_id:
+    pi_id:
       name: Geräte-ID
-      description: Subentry-ID des Pi (optional, bei nur einem Gerät nicht nötig).
+      description: Pi-ID des Pi (optional, bei nur einem Gerät nicht nötig).
       example: ""
 
 restart_pi_go2rtc:
   name: go2rtc auf Pi neu starten
   description: Startet nur den go2rtc-Dienst auf der Pi neu (kein Geräte-Neustart).
   fields:
-    subentry_id:
+    pi_id:
       name: Geräte-ID
-      description: Subentry-ID des Pi (optional, bei nur einem Gerät nicht nötig).
+      description: Pi-ID des Pi (optional, bei nur einem Gerät nicht nötig).
       example: ""
 
 register_stream:
   name: Stream registrieren
   description: Registriert den Hausfunk-Stream in der go2rtc-Instanz von Home Assistant und schreibt die go2rtc-Konfiguration (inkl. preload und WebRTC-Candidates). Startet go2rtc automatisch neu.
   fields:
-    subentry_id:
+    pi_id:
       name: Geräte-ID
-      description: Subentry-ID des Pi (optional, bei nur einem Gerät nicht nötig).
+      description: Pi-ID des Pi (optional, bei nur einem Gerät nicht nötig).
       example: ""
 
 remove_stream:
   name: Stream entfernen
   description: Entfernt den Hausfunk-Stream aus der go2rtc-Instanz.
   fields:
-    subentry_id:
+    pi_id:
       name: Geräte-ID
-      description: Subentry-ID des Pi (optional, bei nur einem Gerät nicht nötig).
+      description: Pi-ID des Pi (optional, bei nur einem Gerät nicht nötig).
       example: ""

@@ -38,8 +38,8 @@ class HausfunkCoordinator(DataUpdateCoordinator):
     """Polls Pi reachability and go2rtc stream registration.
 
     ``host_config`` holds the entry-level go2rtc settings, ``pi_config`` the
-    per-device subentry settings. They are merged so both are available via
-    ``config`` (used by entities).
+    per-device settings. They are merged so both are available via ``config``
+    (used by entities).
     """
 
     def __init__(
@@ -47,14 +47,14 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         hass: HomeAssistant,
         host_config: dict,
         pi_config: dict,
-        subentry_id: str | None = None,
+        pi_id: str | None = None,
     ):
         super().__init__(
             hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL
         )
         self.host_config = host_config
         self.pi_config = pi_config
-        self.subentry_id = subentry_id
+        self.pi_id = pi_id
         self.config = {**host_config, **pi_config}
         self.go2rtc = Go2rtcClient(
             url=host_config[CONF_GO2RTC_URL],

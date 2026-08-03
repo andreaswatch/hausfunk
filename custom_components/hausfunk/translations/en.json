@@ -22,71 +22,18 @@
       "install_failed": "Pi setup failed. See the logs."
     }
   },
-  "config_subentries": {
-    "pi": {
-      "title": "Hausfunk Pi",
-      "entry_type": "Hausfunk Pi device",
-      "initiate_flow": {
-        "user": "Add Pi device"
-      },
-      "step": {
-        "user": {
-          "title": "Connect Hausfunk Pi",
-          "description": "SSH credentials for the Pi.",
-          "data": {
-            "host": "Pi IP address",
-            "port": "SSH port",
-            "username": "SSH username",
-            "password": "SSH password",
-            "sudo_password": "Sudo password (if different, optional)"
-          }
-        },
-        "stream": {
-          "title": "Camera and stream",
-          "data": {
-            "stream_name": "Stream name",
-            "rtsp_port": "Pi RTSP port",
-            "pi_go2rtc_port": "Pi go2rtc API port",
-            "stream_mode": "Stream mode",
-            "width": "Width",
-            "height": "Height",
-            "fps": "Frames per second",
-            "audio_gain": "Microphone gain"
-          }
-        },
-        "install": {
-          "title": "Set up the Pi",
-          "description": "The integration will now install go2rtc on the Pi and enable the service.",
-          "data": {
-            "install_now": "Set up the Pi now"
-          }
-        },
-        "reconfigure": {
-          "title": "Edit Pi device",
-          "data": {
-            "stream_name": "Stream name",
-            "rtsp_port": "Pi RTSP port",
-            "pi_go2rtc_port": "Pi go2rtc API port",
-            "stream_mode": "Stream mode",
-            "width": "Width",
-            "height": "Height",
-            "fps": "Frames per second",
-            "audio_gain": "Microphone gain"
-          }
-        }
-      },
-      "error": {
-        "cannot_connect": "Could not connect to the Pi. Check IP, username and password.",
-        "cannot_detect_arch": "Could not determine the Pi architecture.",
-        "install_failed": "Pi setup failed. See the logs."
-      }
-    }
-  },
   "options": {
     "step": {
       "init": {
-        "title": "Hausfunk go2rtc settings",
-        "description": "Host-level go2rtc settings. Per-device (Pi) settings are edited on the Pi device.",
+        "title": "Hausfunk",
+        "description": "{pi_count} Pi device(s): {pids}. Choose what to manage.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "host": {
+        "title": "go2rtc settings",
+        "description": "Host-level go2rtc settings.",
         "data": {
           "go2rtc_url": "go2rtc URL",
           "go2rtc_username": "Username (optional)",
@@ -97,7 +44,53 @@
           "go2rtc_webrtc_port": "HA go2rtc WebRTC port",
           "go2rtc_candidates": "WebRTC candidates (optional, comma separated)"
         }
+      },
+      "add_pi": {
+        "title": "Add Pi device",
+        "description": "SSH credentials for the Pi.",
+        "data": {
+          "host": "Pi IP address",
+          "port": "SSH port",
+          "username": "SSH username",
+          "password": "SSH password",
+          "sudo_password": "Sudo password (if different, optional)"
+        }
+      },
+      "stream": {
+        "title": "Camera and stream",
+        "data": {
+          "stream_name": "Stream name",
+          "rtsp_port": "Pi RTSP port",
+          "pi_go2rtc_port": "Pi go2rtc API port",
+          "stream_mode": "Stream mode",
+          "width": "Width",
+          "height": "Height",
+          "fps": "Frames per second",
+          "audio_gain": "Microphone gain"
+        }
+      },
+      "install": {
+        "title": "Set up the Pi",
+        "description": "The integration will now install go2rtc on the Pi and enable the service.",
+        "data": {
+          "install_now": "Set up the Pi now"
+        }
+      },
+      "remove_pi": {
+        "title": "Remove Pi device",
+        "data": {
+          "host": "Pi to remove"
+        }
       }
+    },
+    "error": {
+      "already_exists": "A Pi with this address already exists.",
+      "cannot_connect": "Could not connect to the Pi. Check IP, username and password.",
+      "cannot_detect_arch": "Could not determine the Pi architecture.",
+      "install_failed": "Pi setup failed. See the logs."
+    },
+    "abort": {
+      "no_pis": "No Pi devices configured."
     }
   }
 }

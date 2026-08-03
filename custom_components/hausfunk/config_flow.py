@@ -1,8 +1,9 @@
 """Config flow for Hausfunk.
 
-The integration's config entry stores only host-level settings (the HA
-go2rtc instance). Each Pi is added as a *subentry* ("pi") via the device
-subentry flow, so multiple Pis can share one go2rtc host.
+One config entry acts as a "hub" for the HA go2rtc instance. Each Pi is a
+device added under this entry (stored in entry options, registered in the
+device registry via config_entry_id) — no subentries. This mirrors how
+ESPHome / BrowserMod / Landroid Cloud organize hubs with multiple devices.
 """
 
 import logging
@@ -10,12 +11,7 @@ import logging
 import voluptuous as vol
 
 from homeassistant.components import network as ha_network
-from homeassistant.config_entries import (
-    ConfigEntry,
-    ConfigFlow,
-    ConfigSubentryFlow,
-    OptionsFlow,
-)
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import callback
 
 from .const import (
@@ -57,7 +53,7 @@ from .const import (
     DEFAULT_STREAM_NAME,
     DEFAULT_WIDTH,
     DOMAIN,
-    PI_SUBENTRY_TYPE,
+    PIS,
     STREAM_MODE_RTSP,
     STREAM_MODE_WEBRTC,
 )
@@ -83,7 +79,7 @@ INSTALL_SCHEMA = vol.Schema(
     }
 )
 
-# Device (Pi) settings — shown when adding or editing a Pi subentry.
+
 def _pi_stream_schema(defaults: dict) -> vol.Schema:
     return vol.Schema(
         {
@@ -121,11 +117,11 @@ def _pi_stream_schema(defaults: dict) -> vol.Schema:
 class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the host-level config flow (HA go2rtc settings only)."""
 
-    VERSION = 2
+    VERSION = 3
 
     @staticmethod
     def async_supports_multiple_entries() -> bool:
-        """Only one host entry (all Pis are subentries)."""
+        """Only one hub entry (all Pis are devices under it)."""
         return False
 
     @staticmethod
@@ -133,19 +129,11 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: ConfigEntry):
         return HausfunkOptionsFlow(config_entry)
 
-    @staticmethod
-    @callback
-    def async_get_supported_subentry_types(
-        config_entry: ConfigEntry,
-    ) -> dict[str, type[ConfigSubentryFlow]]:
-        """Return the subentry flow for adding Pi devices."""
-        return {PI_SUBENTRY_TYPE: HausfunkPiSubentryFlow}
-
     async def async_step_user(self, user_input=None):
         """Host-level settings: the HA go2rtc instance."""
         if user_input is not None:
             return self.async_create_entry(
-                title="Hausfunk", data=user_input
+                title="Hausfunk", data=user_input, options={PIS: {}}
             )
         schema, detected = await self._detect_go2rtc()
         return self.async_show_form(
@@ -214,119 +202,48 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
         return schema, status
 
 
-class HausfunkPiSubentryFlow(ConfigSubentryFlow):
-    """Handle adding / editing a Pi device as a subentry."""
-
-    def async_create_entry(self, **kwargs):
-        """Create the subentry and reload the host entry.
-
-        The device is registered in async_setup_entry (during the reload)
-        with the correct subentry link; the reload is scheduled here so the
-        device appears without a manual refresh.
-        """
-        result = super().async_create_entry(**kwargs)
-        entry_id, _subentry_type = self.handler
-        self.hass.config_entries.async_schedule_reload(entry_id)
-        return result
-
-    async def async_step_user(self, user_input=None):
-        """Add a new Pi: SSH access + stream settings."""
-        errors = {}
-        if user_input is not None:
-            self._data = dict(user_input)
-            errors = await self._validate_pi(user_input)
-            if not errors:
-                return await self.async_step_stream()
-        return self.async_show_form(
-            step_id="user", data_schema=PI_SCHEMA, errors=errors,
-            description_placeholders={"fingerprint": getattr(self, "_fingerprint", "")},
-        )
-
-    async def async_step_stream(self, user_input=None):
-        """Pi stream/camera settings."""
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_install()
-        defaults = {k: v for k, v in self._data.items()}
-        return self.async_show_form(
-            step_id="stream", data_schema=_pi_stream_schema(defaults)
-        )
-
-    async def async_step_install(self, user_input=None):
-        """Optionally install/configure the Pi right away."""
-        if user_input is not None:
-            install_now = user_input.get(CONF_INSTALL_NOW, True)
-            if install_now:
-                errors = await self._do_install()
-                if errors:
-                    return self.async_show_form(
-                        step_id="install", data_schema=INSTALL_SCHEMA, errors=errors
-                    )
-            return self.async_create_entry(
-                title=self._data[CONF_PI_HOST],
-                data=self._data,
-                unique_id=self._data[CONF_PI_HOST],
-            )
-        return self.async_show_form(step_id="install", data_schema=INSTALL_SCHEMA)
-
-    async def async_step_reconfigure(self, user_input=None):
-        """Edit an existing Pi subentry."""
-        subentry = self._get_reconfigure_subentry()
-        current = dict(subentry.data)
-        if user_input is not None:
-            user_input.pop(CONF_INSTALL_NOW, None)
-            return self.async_update_reload_and_abort(
-                self._get_entry(),
-                subentry,
-                data_updates=user_input,
-            )
-        defaults = {k: v for k, v in current.items()}
-        return self.async_show_form(
-            step_id="reconfigure", data_schema=_pi_stream_schema(defaults)
-        )
-
-    async def _validate_pi(self, data: dict) -> dict:
-        ssh = PiSSH(
-            data[CONF_PI_HOST], data[CONF_PI_PORT],
-            data[CONF_PI_USERNAME], data[CONF_PI_PASSWORD],
-        )
-        try:
-            await ssh.connect()
-            self._fingerprint = ssh.host_key_fingerprint
-            status, _out, _err = await ssh.run("uname -m")
-            if status != 0:
-                return {"base": "cannot_detect_arch"}
-        except PiConnectionError as err:
-            _LOGGER.error("SSH-Validierung fehlgeschlagen: %s", err)
-            return {"base": "cannot_connect"}
-        finally:
-            await ssh.close()
-        return {}
-
-    async def _do_install(self) -> dict:
-        entry = self._get_entry()
-        host = dict(entry.data)
-        data = {**host, **self._data}
-        ssh = PiSSH(
-            self._data[CONF_PI_HOST], self._data[CONF_PI_PORT],
-            self._data[CONF_PI_USERNAME], self._data[CONF_PI_PASSWORD],
-        )
-        installer = HausfunkInstaller(self.hass, ssh, data)
-        try:
-            await installer.install(self._data.get(CONF_SUDO_PASSWORD))
-        except PiCommandError as err:
-            _LOGGER.error("Pi-Installation fehlgeschlagen: %s", err)
-            return {"base": "install_failed"}
-        return {}
-
-
 class HausfunkOptionsFlow(OptionsFlow):
-    """Handle host-level options (go2rtc settings)."""
+    """Handle host options (go2rtc) and Pi device management."""
 
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
+        self._data: dict = {}
+
+    def _pis(self) -> dict:
+        return dict(self._entry.options.get(PIS, {}))
+
+    def _save(self, options: dict):
+        self.hass.config_entries.async_update_entry(self._entry, options=options)
 
     async def async_step_init(self, user_input=None):
+        """Main menu: manage go2rtc host or add/edit Pi devices."""
+        pis = self._pis()
+        if user_input is not None:
+            action = user_input["action"]
+            if action == "host":
+                return await self.async_step_host()
+            if action == "add":
+                return await self.async_step_add_pi()
+            if action == "remove":
+                return await self.async_step_remove_pi()
+        menu = ["host", "add", "remove"]
+        schema = vol.Schema(
+            {
+                vol.Required("action"): vol.In(menu),
+            }
+        )
+        descriptions = {k: k for k in menu}
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            description_placeholders={
+                "pi_count": str(len(pis)),
+                "pids": ", ".join(pis.keys()) if pis else "-",
+            },
+        )
+
+    async def async_step_host(self, user_input=None):
+        """Edit host-level go2rtc settings."""
         current = {**self._entry.data, **self._entry.options}
         schema = vol.Schema(
             {
@@ -342,8 +259,102 @@ class HausfunkOptionsFlow(OptionsFlow):
         )
         if user_input is not None:
             self.hass.config_entries.async_update_entry(
-                self._entry, options=user_input
+                self._entry, data=user_input
             )
             await self.hass.config_entries.async_reload(self._entry.entry_id)
             return self.async_create_entry(data={})
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="host", data_schema=schema)
+
+    async def async_step_add_pi(self, user_input=None):
+        """Add a new Pi device."""
+        errors = {}
+        if user_input is not None:
+            host = user_input[CONF_PI_HOST]
+            pis = self._pis()
+            if host in pis:
+                errors[CONF_PI_HOST] = "already_exists"
+            else:
+                self._data = dict(user_input)
+                errors = await self._validate_pi(user_input)
+                if not errors:
+                    return await self.async_step_stream()
+        return self.async_show_form(
+            step_id="add_pi", data_schema=PI_SCHEMA, errors=errors
+        )
+
+    async def async_step_stream(self, user_input=None):
+        """Pi stream/camera settings."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_install()
+        return self.async_show_form(
+            step_id="stream", data_schema=_pi_stream_schema({})
+        )
+
+    async def async_step_install(self, user_input=None):
+        """Optionally install/configure the Pi right away."""
+        if user_input is not None:
+            install_now = user_input.get(CONF_INSTALL_NOW, True)
+            if install_now:
+                errors = await self._do_install()
+                if errors:
+                    return self.async_show_form(
+                        step_id="install", data_schema=INSTALL_SCHEMA, errors=errors
+                    )
+            # store the Pi in entry options
+            pis = self._pis()
+            pis[self._data[CONF_PI_HOST]] = dict(self._data)
+            self._save({**self._entry.options, PIS: pis})
+            await self.hass.config_entries.async_reload(self._entry.entry_id)
+            return self.async_create_entry(data={})
+        return self.async_show_form(step_id="install", data_schema=INSTALL_SCHEMA)
+
+    async def async_step_remove_pi(self, user_input=None):
+        """Remove a Pi device."""
+        pis = self._pis()
+        if not pis:
+            return self.async_abort(reason="no_pis")
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_PI_HOST): vol.In(list(pis)),
+            }
+        )
+        if user_input is not None:
+            host = user_input[CONF_PI_HOST]
+            pis.pop(host, None)
+            self._save({**self._entry.options, PIS: pis})
+            await self.hass.config_entries.async_reload(self._entry.entry_id)
+            return self.async_create_entry(data={})
+        return self.async_show_form(step_id="remove_pi", data_schema=schema)
+
+    async def _validate_pi(self, data: dict) -> dict:
+        ssh = PiSSH(
+            data[CONF_PI_HOST], data[CONF_PI_PORT],
+            data[CONF_PI_USERNAME], data[CONF_PI_PASSWORD],
+        )
+        try:
+            await ssh.connect()
+            status, _out, _err = await ssh.run("uname -m")
+            if status != 0:
+                return {"base": "cannot_detect_arch"}
+        except PiConnectionError as err:
+            _LOGGER.error("SSH-Validierung fehlgeschlagen: %s", err)
+            return {"base": "cannot_connect"}
+        finally:
+            await ssh.close()
+        return {}
+
+    async def _do_install(self) -> dict:
+        host = dict(self._entry.data)
+        data = {**host, **self._data}
+        ssh = PiSSH(
+            self._data[CONF_PI_HOST], self._data[CONF_PI_PORT],
+            self._data[CONF_PI_USERNAME], self._data[CONF_PI_PASSWORD],
+        )
+        installer = HausfunkInstaller(self.hass, ssh, data)
+        try:
+            await installer.install(self._data.get(CONF_SUDO_PASSWORD))
+        except PiCommandError as err:
+            _LOGGER.error("Pi-Installation fehlgeschlagen: %s", err)
+            return {"base": "install_failed"}
+        return {}

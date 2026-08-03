@@ -15,7 +15,7 @@ from .const import (
     CONF_SUDO_PASSWORD,
     DOMAIN,
     NAME,
-    PI_SUBENTRY_TYPE,
+    PIS,
     PLATFORMS,
 )
 from .coordinator import HausfunkCoordinator
@@ -30,25 +30,21 @@ _NOTIFICATION_ID = "hausfunk_install"
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Hausfunk from a config entry.
 
-    The entry holds host-level go2rtc settings. Each Pi is a subentry;
-    a coordinator is created per Pi.
+    The entry is a hub for the HA go2rtc instance. Each Pi is a device
+    (config in entry.options[PIS]) registered in the device registry via
+    config_entry_id — no subentries.
     """
     host_config = dict(entry.data)
 
     coordinators: dict[str, HausfunkCoordinator] = {}
-    for subentry_id, subentry in entry.subentries.items():
-        if subentry.subentry_type != PI_SUBENTRY_TYPE:
-            continue
-        pi_config = dict(subentry.data)
+    for pi_host, pi_config in dict(entry.options.get(PIS, {})).items():
         coordinator = HausfunkCoordinator(
-            hass, host_config, pi_config, subentry_id=subentry_id
+            hass, host_config, pi_config, pi_id=pi_host
         )
         await coordinator.register_stream()
         await coordinator.async_config_entry_first_refresh()
-        await _register_pi_device(hass, entry, pi_config, subentry_id)
-        coordinators[subentry_id] = coordinator
-
-    await _remove_orphaned_devices(hass, entry)
+        await _register_pi_device(hass, entry, pi_config)
+        coordinators[pi_host] = coordinator
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 
@@ -57,22 +53,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_services(hass, entry)
 
     return True
-
-
-async def _remove_orphaned_devices(hass: HomeAssistant, entry: ConfigEntry):
-    """Remove devices linked to this entry that don't belong to a Pi subentry.
-
-    Older versions created a device per entry without linking it to a subentry,
-    leaving an orphan ("devices not part of a subentry"). Clean those up.
-    """
-    registry = dr.async_get(hass)
-    for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
-        if device.config_subentry_id is not None:
-            continue  # properly linked to a Pi subentry
-        # only remove orphan devices with our domain identifiers
-        if any(domain == DOMAIN for domain, _ in device.identifiers):
-            registry.async_remove_device(device.id)
-
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -88,10 +68,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate v1 entries (Pi data in entry.data) to v2 (Pi as subentry)."""
+    """Migrate old entries to the hub + devices model.
+
+    v1: Pi data in entry.data (split into host data + Pi options).
+    v2: Pi data in subentries (move into entry.options[PIS]).
+    """
     if entry.version == 1:
         data = dict(entry.data)
-        # split host vs pi settings
         host_keys = {
             "go2rtc_url", "go2rtc_username", "go2rtc_password",
             "go2rtc_version", "go2rtc_host", "go2rtc_rtsp_port",
@@ -99,30 +82,38 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
         host_data = {k: v for k, v in data.items() if k in host_keys}
         pi_data = {k: v for k, v in data.items() if k not in host_keys}
-        hass.config_entries.async_update_entry(
-            entry, data=host_data, version=2
-        )
-        # create the Pi subentry from the old Pi settings
+        pis = {}
         if pi_data:
-            from homeassistant.config_entries import ConfigSubentry
+            pis[pi_data[CONF_PI_HOST]] = pi_data
+        hass.config_entries.async_update_entry(
+            entry, data=host_data, options={PIS: pis}, version=3
+        )
+        return True
 
-            subentry = ConfigSubentry(
-                subentry_type=PI_SUBENTRY_TYPE,
-                title=str(pi_data.get(CONF_PI_HOST, "Pi")),
-                data=pi_data,
-                unique_id=str(pi_data.get(CONF_PI_HOST)),
-            )
-            hass.config_entries.async_add_subentry(entry, subentry)
+    if entry.version == 2:
+        data = dict(entry.data)
+        # v2 stored Pi data in subentries -> move into options[PIS]
+        pis = {}
+        for subentry in entry.subentries.values():
+            if subentry.subentry_type == "pi":
+                pi_data = dict(subentry.data)
+                pis[pi_data.get(CONF_PI_HOST)] = pi_data
+        options = dict(entry.options)
+        options[PIS] = {**options.get(PIS, {}), **pis}
+        hass.config_entries.async_update_entry(
+            entry, data=data, options=options, version=3
+        )
+        return True
+
     return True
 
 
 async def _register_pi_device(
-    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict, subentry_id: str
+    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict
 ):
     registry = dr.async_get(hass)
     registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        config_subentry_id=subentry_id,
         identifiers={(DOMAIN, pi_config[CONF_PI_HOST])},
         name=f"Hausfunk Pi ({pi_config[CONF_PI_HOST]})",
         manufacturer=NAME,
@@ -170,10 +161,10 @@ def _get_coordinators(hass: HomeAssistant) -> dict[str, HausfunkCoordinator]:
 
 
 def _get_coordinator(
-    hass: HomeAssistant, entry: ConfigEntry, subentry_id: str
+    hass: HomeAssistant, entry: ConfigEntry, pi_id: str
 ) -> HausfunkCoordinator:
     coordinators = hass.data[DOMAIN][entry.entry_id]
-    return coordinators[subentry_id]
+    return coordinators[pi_id]
 
 
 def _make_ssh(pi_config: dict) -> PiSSH:
@@ -184,22 +175,22 @@ def _make_ssh(pi_config: dict) -> PiSSH:
 
 
 async def _async_register_services(hass: HomeAssistant, entry: ConfigEntry):
-    """Register services that operate on a specific Pi (subentry)."""
+    """Register services that operate on a specific Pi (device)."""
 
-    def _resolve_subentry_id(call: ServiceCall) -> str | None:
+    def _resolve_pi_id(call: ServiceCall) -> str | None:
         coordinators = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
-        if call.data.get("subentry_id") in coordinators:
-            return call.data["subentry_id"]
+        if call.data.get("pi_id") in coordinators:
+            return call.data["pi_id"]
         if len(coordinators) == 1:
             return next(iter(coordinators))
         return None
 
     async def _setup_pi(call: ServiceCall):
-        subentry_id = _resolve_subentry_id(call)
-        if subentry_id is None:
-            _notify(hass, "Mehrere Geräte", "Bitte subentry_id angeben.")
+        pi_id = _resolve_pi_id(call)
+        if pi_id is None:
+            _notify(hass, "Mehrere Geräte", "Bitte pi_id angeben.")
             return
-        coordinator = _get_coordinator(hass, entry, subentry_id)
+        coordinator = _get_coordinator(hass, entry, pi_id)
         try:
             installer = HausfunkInstaller(hass, _make_ssh(coordinator.pi_config), coordinator.config)
             message = await installer.install(coordinator.pi_config.get(CONF_SUDO_PASSWORD))
@@ -211,11 +202,11 @@ async def _async_register_services(hass: HomeAssistant, entry: ConfigEntry):
             _notify(hass, "Pi-Setup fehlgeschlagen", str(err), error=True)
 
     async def _update_pi(call: ServiceCall):
-        subentry_id = _resolve_subentry_id(call)
-        if subentry_id is None:
-            _notify(hass, "Mehrere Geräte", "Bitte subentry_id angeben.")
+        pi_id = _resolve_pi_id(call)
+        if pi_id is None:
+            _notify(hass, "Mehrere Geräte", "Bitte pi_id angeben.")
             return
-        coordinator = _get_coordinator(hass, entry, subentry_id)
+        coordinator = _get_coordinator(hass, entry, pi_id)
         try:
             installer = HausfunkInstaller(hass, _make_ssh(coordinator.pi_config), coordinator.config)
             message = await installer.update(coordinator.pi_config.get(CONF_SUDO_PASSWORD))
@@ -226,11 +217,11 @@ async def _async_register_services(hass: HomeAssistant, entry: ConfigEntry):
             _notify(hass, "Pi-Update fehlgeschlagen", str(err), error=True)
 
     async def _uninstall_pi(call: ServiceCall):
-        subentry_id = _resolve_subentry_id(call)
-        if subentry_id is None:
-            _notify(hass, "Mehrere Geräte", "Bitte subentry_id angeben.")
+        pi_id = _resolve_pi_id(call)
+        if pi_id is None:
+            _notify(hass, "Mehrere Geräte", "Bitte pi_id angeben.")
             return
-        coordinator = _get_coordinator(hass, entry, subentry_id)
+        coordinator = _get_coordinator(hass, entry, pi_id)
         try:
             installer = HausfunkInstaller(hass, _make_ssh(coordinator.pi_config), coordinator.config)
             message = await installer.uninstall(coordinator.pi_config.get(CONF_SUDO_PASSWORD))
@@ -241,11 +232,11 @@ async def _async_register_services(hass: HomeAssistant, entry: ConfigEntry):
             _notify(hass, "Pi-Deinstallation fehlgeschlagen", str(err), error=True)
 
     async def _restart_pi_go2rtc(call: ServiceCall):
-        subentry_id = _resolve_subentry_id(call)
-        if subentry_id is None:
-            _notify(hass, "Mehrere Geräte", "Bitte subentry_id angeben.")
+        pi_id = _resolve_pi_id(call)
+        if pi_id is None:
+            _notify(hass, "Mehrere Geräte", "Bitte pi_id angeben.")
             return
-        coordinator = _get_coordinator(hass, entry, subentry_id)
+        coordinator = _get_coordinator(hass, entry, pi_id)
         try:
             installer = HausfunkInstaller(hass, _make_ssh(coordinator.pi_config), coordinator.config)
             message = await installer.restart_service()
@@ -255,22 +246,22 @@ async def _async_register_services(hass: HomeAssistant, entry: ConfigEntry):
             _notify(hass, "go2rtc-Neustart auf Pi fehlgeschlagen", str(err), error=True)
 
     async def _register_stream(call: ServiceCall):
-        subentry_id = _resolve_subentry_id(call)
-        if subentry_id is None:
-            _notify(hass, "Mehrere Geräte", "Bitte subentry_id angeben.")
+        pi_id = _resolve_pi_id(call)
+        if pi_id is None:
+            _notify(hass, "Mehrere Geräte", "Bitte pi_id angeben.")
             return
-        coordinator = _get_coordinator(hass, entry, subentry_id)
+        coordinator = _get_coordinator(hass, entry, pi_id)
         ok = await coordinator.register_stream(persist=True, restart=True)
         await coordinator.async_request_refresh()
         if not ok:
             notify_restart_needed(hass)
 
     async def _remove_stream(call: ServiceCall):
-        subentry_id = _resolve_subentry_id(call)
-        if subentry_id is None:
-            _notify(hass, "Mehrere Geräte", "Bitte subentry_id angeben.")
+        pi_id = _resolve_pi_id(call)
+        if pi_id is None:
+            _notify(hass, "Mehrere Geräte", "Bitte pi_id angeben.")
             return
-        coordinator = _get_coordinator(hass, entry, subentry_id)
+        coordinator = _get_coordinator(hass, entry, pi_id)
         ok = await coordinator.remove_stream()
         await coordinator.async_request_refresh()
         if ok:
