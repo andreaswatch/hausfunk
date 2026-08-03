@@ -48,6 +48,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _register_pi_device(hass, entry, pi_config, subentry_id)
         coordinators[subentry_id] = coordinator
 
+    await _remove_orphaned_devices(hass, entry)
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -55,6 +57,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_services(hass, entry)
 
     return True
+
+
+async def _remove_orphaned_devices(hass: HomeAssistant, entry: ConfigEntry):
+    """Remove devices linked to this entry that don't belong to a Pi subentry.
+
+    Older versions created a device per entry without linking it to a subentry,
+    leaving an orphan ("devices not part of a subentry"). Clean those up.
+    """
+    registry = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+        if device.config_subentry_id is not None:
+            continue  # properly linked to a Pi subentry
+        # only remove orphan devices with our domain identifiers
+        if any(domain == DOMAIN for domain, _ in device.identifiers):
+            registry.async_remove_device(device.id)
+
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

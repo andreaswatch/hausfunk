@@ -217,6 +217,13 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
 class HausfunkPiSubentryFlow(ConfigSubentryFlow):
     """Handle adding / editing a Pi device as a subentry."""
 
+    def async_create_entry(self, **kwargs):
+        """Create the subentry and reload the host entry so the device appears."""
+        result = super().async_create_entry(**kwargs)
+        entry_id, _subentry_type = self.handler
+        self.hass.config_entries.async_schedule_reload(entry_id)
+        return result
+
     async def async_step_user(self, user_input=None):
         """Add a new Pi: SSH access + stream settings."""
         errors = {}
@@ -262,8 +269,8 @@ class HausfunkPiSubentryFlow(ConfigSubentryFlow):
         subentry = self._get_reconfigure_subentry()
         current = dict(subentry.data)
         if user_input is not None:
-            install_now = user_input.pop(CONF_INSTALL_NOW, False)
-            return self.async_update_and_abort(
+            user_input.pop(CONF_INSTALL_NOW, None)
+            return self.async_update_reload_and_abort(
                 self._get_entry(),
                 subentry,
                 data_updates=user_input,
