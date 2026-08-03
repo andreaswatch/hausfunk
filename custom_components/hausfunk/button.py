@@ -51,6 +51,7 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
     """A one-shot action button backed by the coordinator."""
 
     _attr_has_entity_name = True
+    _attr_entity_registry_enabled_default = True
 
     def __init__(
         self, coordinator: HausfunkCoordinator, key: str, name: str, icon: str, action: str

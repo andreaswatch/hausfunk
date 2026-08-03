@@ -5,8 +5,8 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 DOMAIN = "hausfunk"
 NAME = "Hausfunk"
 
-# option key holding the per-Pi device configs: {pi_host: {settings}}
-PIS = "pis"
+# subentry type for Pi devices (provides the native "+ Add Pi" button)
+PI_SUBENTRY_TYPE = "pi"
 
 PLATFORMS = ["binary_sensor", "switch", "camera", "button"]
 

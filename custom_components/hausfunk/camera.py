@@ -42,6 +42,7 @@ class HausfunkCamera(CoordinatorEntity, Camera):
     """
 
     _attr_has_entity_name = True
+    _attr_entity_registry_enabled_default = True
 
     def __init__(self, coordinator: HausfunkCoordinator):
         super().__init__(coordinator)

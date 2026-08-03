@@ -26,6 +26,7 @@ class HausfunkStreamSwitch(CoordinatorEntity, SwitchEntity):
     """Toggles the stream registration in go2rtc."""
 
     _attr_has_entity_name = True
+    _attr_entity_registry_enabled_default = True
 
     def __init__(self, coordinator: HausfunkCoordinator):
         super().__init__(coordinator)

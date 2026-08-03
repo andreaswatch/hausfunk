@@ -13,7 +13,7 @@ from .const import (
     CONF_PI_USERNAME,
     CONF_SUDO_PASSWORD,
     DOMAIN,
-    PIS,
+    PI_SUBENTRY_TYPE,
     PLATFORMS,
 )
 from .coordinator import HausfunkCoordinator
@@ -28,20 +28,24 @@ _NOTIFICATION_ID = "hausfunk_install"
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Hausfunk from a config entry.
 
-    The entry is a hub for the HA go2rtc instance. Each Pi (config in
-    entry.options[PIS]) gets a coordinator; its entities create the device
-    entries automatically via device_info (Landroid Cloud pattern).
+    The entry is a hub for the HA go2rtc instance. Each Pi is a subentry; its
+    coordinator provides the entities, which create the device entries via
+    device_info (Landroid Cloud pattern — no subentry link on devices).
     """
     host_config = dict(entry.data)
 
     coordinators: dict[str, HausfunkCoordinator] = {}
-    for pi_host, pi_config in dict(entry.options.get(PIS, {})).items():
+    for subentry_id, subentry in entry.subentries.items():
+        if subentry.subentry_type != PI_SUBENTRY_TYPE:
+            continue
+        pi_config = dict(subentry.data)
+        pi_id = pi_config.get(CONF_PI_HOST)
         coordinator = HausfunkCoordinator(
-            hass, host_config, pi_config, pi_id=pi_host
+            hass, host_config, pi_config, pi_id=pi_id
         )
         await coordinator.register_stream()
         await coordinator.async_config_entry_first_refresh()
-        coordinators[pi_host] = coordinator
+        coordinators[pi_id] = coordinator
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 
