@@ -21,10 +21,9 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinators: dict[str, HausfunkCoordinator] = hass.data[DOMAIN][entry.entry_id]
+    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         HausfunkBinarySensor(coordinator, key, name, icon)
-        for coordinator in coordinators.values()
         for key, name, icon in SENSORS
     )
 

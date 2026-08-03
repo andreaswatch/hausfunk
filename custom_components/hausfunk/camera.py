@@ -25,10 +25,8 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinators: dict[str, HausfunkCoordinator] = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        HausfunkCamera(coordinator) for coordinator in coordinators.values()
-    )
+    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([HausfunkCamera(coordinator)])
 
 
 class HausfunkCamera(CoordinatorEntity, Camera):
