@@ -79,9 +79,6 @@
         "cannot_connect": "Could not connect to the Pi. Check IP, username and password.",
         "cannot_detect_arch": "Could not determine the Pi architecture.",
         "install_failed": "Pi setup failed. See the logs."
-      },
-      "abort": {
-        "already_configured": "A Hausfunk Pi is already configured. Only one device is supported."
       }
     }
   },

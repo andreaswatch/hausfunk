@@ -85,8 +85,8 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
 
 Go to **Settings → Devices & Services** → **Add Integration**, search for
 "Hausfunk". The config flow only asks for **go2rtc (Home Assistant)** settings
-and does **not** create a device. Right after the host settings you are
-directly guided through adding the first Pi device.
+and does **not** create a device. Only one hub entry is allowed (like ESPHome);
+Pis are added as devices inside it.
 
 - The integration tries to **auto-detect** the HA go2rtc instance (known local
   endpoints) and the HA host's LAN IP. Detected values are pre-filled; adjust
@@ -103,11 +103,12 @@ directly guided through adding the first Pi device.
   If you run a standalone go2rtc without the `1` prefix, set the RTSP port
   to `8554` instead.
 
-### 2. Add a Pi device (per device)
+### 2. Add Pi device(s) (per device)
 
 Only the Pis appear as devices; the HA go2rtc host itself is not a device.
-Use the **"Add Pi device"** button on the Hausfunk integration row (not the
-header "Add device" button). The flow asks for the **Pi-specific** settings:
+Use the **"Add Pi device"** button on the Hausfunk integration row to add one
+or more Pis. Each Pi gets its own device with a working ">" entry. The flow
+asks for the **Pi-specific** settings:
 
 | Setting | Description |
 |---------|-------------|

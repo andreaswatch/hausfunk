@@ -45,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await coordinator.register_stream()
         await coordinator.async_config_entry_first_refresh()
-        await _register_pi_device(hass, entry, pi_config)
+        await _register_pi_device(hass, entry, pi_config, subentry_id)
         coordinators[subentry_id] = coordinator
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
@@ -99,11 +99,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _register_pi_device(
-    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict
+    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict, subentry_id: str
 ):
     registry = dr.async_get(hass)
     registry.async_get_or_create(
         config_entry_id=entry.entry_id,
+        config_subentry_id=subentry_id,
         identifiers={(DOMAIN, pi_config[CONF_PI_HOST])},
         name=f"Hausfunk Pi ({pi_config[CONF_PI_HOST]})",
         manufacturer=NAME,

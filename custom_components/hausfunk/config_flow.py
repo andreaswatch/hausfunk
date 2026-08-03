@@ -14,7 +14,6 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigSubentryFlow,
-    FlowType,
     OptionsFlow,
 )
 from homeassistant.core import callback
@@ -155,18 +154,6 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders={"detected": detected},
         )
 
-    async def async_on_create_entry(self, result) -> dict:
-        """After creating the host entry, directly start the Pi flow."""
-        subentry_result = await self.hass.config_entries.subentries.async_init(
-            (result["result"].entry_id, PI_SUBENTRY_TYPE),
-            context={"source": "user"},
-        )
-        result["next_flow"] = (
-            FlowType.CONFIG_SUBENTRIES_FLOW,
-            subentry_result["flow_id"],
-        )
-        return result
-
     async def _detect_go2rtc(self) -> tuple[vol.Schema, str]:
         """Try to auto-detect the HA go2rtc instance and LAN IP."""
         defaults = {
@@ -227,21 +214,11 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
         return schema, status
 
 
-def _has_pi_subentry(entry) -> bool:
-    """True if a Pi subentry already exists (max. one device)."""
-    return any(
-        s.subentry_type == PI_SUBENTRY_TYPE
-        for s in entry.subentries.values()
-    )
-
-
 class HausfunkPiSubentryFlow(ConfigSubentryFlow):
     """Handle adding / editing a Pi device as a subentry."""
 
     async def async_step_user(self, user_input=None):
         """Add a new Pi: SSH access + stream settings."""
-        if _has_pi_subentry(self._get_entry()):
-            return self.async_abort(reason="already_configured")
         errors = {}
         if user_input is not None:
             self._data = dict(user_input)
