@@ -103,8 +103,9 @@ Go to **Settings → Devices & Services** → **Add Integration**, search for
 
 ### 2. Add a Pi device (per device)
 
-On the Hausfunk integration (or the go2rtc device) click **Add device / Pi**.
-The device flow asks for the **Pi-specific** settings:
+On the Hausfunk integration click **Add device / Pi** (only the Pis appear as
+devices; the HA go2rtc host itself is not a device). The device flow asks for
+the **Pi-specific** settings:
 
 | Setting | Description |
 |---------|-------------|

@@ -8,7 +8,6 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
-    CONF_GO2RTC_VERSION,
     CONF_PI_HOST,
     CONF_PI_PASSWORD,
     CONF_PI_PORT,
@@ -36,9 +35,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """
     host_config = dict(entry.data)
 
-    # register the go2rtc host device (no entities, just for grouping)
-    await _register_host_device(hass, entry, host_config)
-
     coordinators: dict[str, HausfunkCoordinator] = {}
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != PI_SUBENTRY_TYPE:
@@ -49,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await coordinator.register_stream()
         await coordinator.async_config_entry_first_refresh()
-        await _register_pi_device(hass, entry, pi_config, subentry_id)
+        await _register_pi_device(hass, entry, pi_config)
         coordinators[subentry_id] = coordinator
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
@@ -102,22 +98,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def _register_host_device(
-    hass: HomeAssistant, entry: ConfigEntry, host_config: dict
-):
-    registry = dr.async_get(hass)
-    registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, "host")},
-        name="Hausfunk go2rtc",
-        manufacturer=NAME,
-        model="go2rtc (Home Assistant)",
-        sw_version=host_config.get(CONF_GO2RTC_VERSION),
-    )
-
-
 async def _register_pi_device(
-    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict, subentry_id: str
+    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict
 ):
     registry = dr.async_get(hass)
     registry.async_get_or_create(
@@ -126,7 +108,6 @@ async def _register_pi_device(
         name=f"Hausfunk Pi ({pi_config[CONF_PI_HOST]})",
         manufacturer=NAME,
         model="Pi + go2rtc",
-        via_device=(DOMAIN, "host"),
     )
 
 
