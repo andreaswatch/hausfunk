@@ -89,11 +89,11 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
    (default `1984`, used for the `webrtc:ws://` relay), **stream mode**
    (`webrtc` = go2rtc-to-go2rtc WebRTC relay, recommended for reliable
    two-way audio; `rtsp` = direct RTSP pull), width, height, fps, mic gain.
-4. **go2rtc:** URL of the HA go2rtc instance (e.g. `http://localhost:11984`
-   with the HA add-on / built-in go2rtc), optional credentials, go2rtc
-   version to install on the Pi, the HA go2rtc RTSP host and port
-   (defaults `127.0.0.1` / `18554` — the add-on prefixes ports with `1`),
-   plus the HA go2rtc **WebRTC port** (default `8555`).
+4. **go2rtc:** the integration tries to **auto-detect** the HA go2rtc
+   instance (known local endpoints) and the HA host's LAN IP. Detected values
+   are pre-filled and shown in the form; adjust them if needed:
+   go2rtc URL, optional credentials, go2rtc version, **HA go2rtc LAN host**
+   (used for the WebRTC candidate), RTSP port, WebRTC port.
 
    The **HA go2rtc RTSP host** is also used to derive the WebRTC candidate:
    set it to the LAN address of the go2rtc instance (e.g. `192.168.178.21`)

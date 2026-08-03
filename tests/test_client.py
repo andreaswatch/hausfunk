@@ -116,5 +116,47 @@ class TestGo2rtcPersistStream(unittest.IsolatedAsyncioTestCase):
         client._request.assert_called_once()
 
 
+class TestGo2rtcDetect(unittest.IsolatedAsyncioTestCase):
+    async def test_detect_parses_ports_and_version(self):
+        client = Go2rtcClient(url="http://localhost:11984")
+        responses = {
+            ("GET", "/api"): (
+                '{"version":"1.9.14","rtsp":{"listen":":8554"}}'
+            ),
+            ("GET", "/api/config"): (
+                "api:\n  listen: ':1984'\n"
+                "rtsp:\n  listen: ':8554'\n"
+                "webrtc:\n  listen: ':8555'\n"
+            ),
+        }
+
+        async def fake_request(method, path, params=None, data=None, content_type=None):
+            return responses[(method, path)]
+
+        client.ensure_session = AsyncMock()
+        client._request = fake_request
+        result = await client.detect()
+        self.assertEqual(result["version"], "1.9.14")
+        self.assertEqual(result["api_port"], 1984)
+        self.assertEqual(result["rtsp_port"], 8554)
+        self.assertEqual(result["webrtc_port"], 8555)
+
+    async def test_detect_falls_back_to_defaults(self):
+        client = Go2rtcClient(url="http://localhost:11984")
+
+        async def fake_request(method, path, params=None, data=None, content_type=None):
+            if path == "/api":
+                return '{"version":"1.9.14"}'
+            return "streams: {}\n"
+
+        client.ensure_session = AsyncMock()
+        client._request = fake_request
+        result = await client.detect()
+        self.assertEqual(result["version"], "1.9.14")
+        self.assertEqual(result["rtsp_port"], 8554)
+        self.assertEqual(result["api_port"], 1984)
+        self.assertEqual(result["webrtc_port"], 8555)
+
+
 if __name__ == "__main__":
     unittest.main()

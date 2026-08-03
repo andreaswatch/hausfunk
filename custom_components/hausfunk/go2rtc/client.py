@@ -19,6 +19,17 @@ def _encode_src(src: str) -> str:
     return quote(src, safe=_SAFE)
 
 
+def _port_from_listen(listen: str | None) -> int | None:
+    """Extract the port from a go2rtc listen line like ``:8554`` or ``0.0.0.0:8554``."""
+    if not listen:
+        return None
+    listen = str(listen).strip()
+    if listen.startswith(":"):
+        listen = listen[1:]
+    host, sep, port = listen.rpartition(":")
+    return int(port) if sep and port.isdigit() else None
+
+
 class Go2rtcError(Exception):
     """Raised when the go2rtc API returns an error."""
 
@@ -93,6 +104,32 @@ class Go2rtcClient:
         """Restart the go2rtc process to apply config changes."""
         await self.ensure_session()
         await self._request("POST", "/api/restart")
+
+    async def detect(self) -> dict:
+        """Probe the go2rtc instance and return detected settings.
+
+        Returns a dict with ``version``, ``api_port``, ``rtsp_port`` and
+        ``webrtc_port`` parsed from the /api and /api/config responses.
+        Raises Go2rtcError when the instance is not reachable.
+        """
+        await self.ensure_session()
+        text = await self._request("GET", "/api")
+        info = json.loads(text)
+        cfg_text = await self._request("GET", "/api/config")
+        cfg = yaml.safe_load(cfg_text) or {}
+        result = {
+            "version": info.get("version", ""),
+            "rtsp_port": _port_from_listen(cfg.get("rtsp", {}).get("listen")),
+            "api_port": _port_from_listen(cfg.get("api", {}).get("listen")),
+            "webrtc_port": _port_from_listen(
+                cfg.get("webrtc", {}).get("listen")
+            ),
+        }
+        # fall back to defaults when a listen line is absent
+        result["rtsp_port"] = result["rtsp_port"] or 8554
+        result["api_port"] = result["api_port"] or 1984
+        result["webrtc_port"] = result["webrtc_port"] or 8555
+        return result
 
     async def persist_stream(
         self,

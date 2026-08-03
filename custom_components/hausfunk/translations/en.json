@@ -27,6 +27,7 @@
       },
       "go2rtc": {
         "title": "go2rtc (Home Assistant)",
+        "description": "{detected}. The fields are pre-filled, adjust if needed.",
         "data": {
           "go2rtc_url": "go2rtc URL",
           "go2rtc_username": "Username (optional)",
