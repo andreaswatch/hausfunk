@@ -4,6 +4,8 @@ import tests.hass_mock
 
 from custom_components.hausfunk.coordinator import HausfunkCoordinator
 from custom_components.hausfunk.const import (
+    CONF_GO2RTC_CANDIDATES,
+    CONF_GO2RTC_HOST,
     CONF_GO2RTC_URL,
     CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
@@ -21,6 +23,8 @@ CONFIG = {
     CONF_RTSP_PORT: 8554,
     CONF_STREAM_NAME: "tuer",
     CONF_GO2RTC_URL: DEFAULT_GO2RTC_URL,
+    CONF_GO2RTC_HOST: "192.168.178.21",
+    CONF_GO2RTC_CANDIDATES: "",
 }
 
 
@@ -61,6 +65,27 @@ class TestCoordinator(unittest.TestCase):
 
     def test_default_pi_go2rtc_port(self):
         self.assertEqual(DEFAULT_PI_GO2RTC_PORT, 1984)
+
+    def test_webrtc_candidates_derived_from_host(self):
+        coordinator = HausfunkCoordinator(hass=None, config=CONFIG)
+        self.assertEqual(coordinator.webrtc_candidates, "192.168.178.21:8555")
+
+    def test_webrtc_candidates_configured_win(self):
+        config = dict(CONFIG)
+        config[CONF_GO2RTC_CANDIDATES] = (
+            "go2rtc-ha.moers.webredirect.org:8555, 192.168.178.21:8555"
+        )
+        coordinator = HausfunkCoordinator(hass=None, config=config)
+        self.assertEqual(
+            coordinator.webrtc_candidates,
+            "go2rtc-ha.moers.webredirect.org:8555, 192.168.178.21:8555",
+        )
+
+    def test_webrtc_candidates_none_for_loopback(self):
+        config = dict(CONFIG)
+        config[CONF_GO2RTC_HOST] = "127.0.0.1"
+        coordinator = HausfunkCoordinator(hass=None, config=config)
+        self.assertIsNone(coordinator.webrtc_candidates)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     CONF_GO2RTC_CANDIDATES,
+    CONF_GO2RTC_HOST,
     CONF_GO2RTC_PASSWORD,
     CONF_GO2RTC_URL,
     CONF_GO2RTC_USERNAME,
@@ -18,6 +19,7 @@ from .const import (
     CONF_RTSP_PORT,
     CONF_STREAM_MODE,
     CONF_STREAM_NAME,
+    DEFAULT_GO2RTC_HOST,
     DEFAULT_GO2RTC_WEBRTC_PORT,
     DEFAULT_PI_GO2RTC_PORT,
     DEFAULT_STREAM_MODE,
@@ -45,6 +47,26 @@ class HausfunkCoordinator(DataUpdateCoordinator):
             username=config.get(CONF_GO2RTC_USERNAME) or None,
             password=config.get(CONF_GO2RTC_PASSWORD) or None,
         )
+
+    @property
+    def webrtc_candidates(self) -> str | None:
+        """WebRTC candidates for the HA go2rtc config.
+
+        Falls nicht konfiguriert, wird automatisch
+        ``<go2rtc_host>:<webrtc_port>`` als Kandidat abgeleitet, damit der
+        Browser die Medienverbindung zum HA go2rtc aufbauen kann (127.0.0.1
+        wird dabei ignoriert, weil von außen nicht erreichbar).
+        """
+        configured = self.config.get(CONF_GO2RTC_CANDIDATES)
+        if configured:
+            return configured
+        host = self.config.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST)
+        port = self.config.get(
+            CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT
+        )
+        if host in ("127.0.0.1", "localhost", "::1"):
+            return None
+        return f"{host}:{port}"
 
     @property
     def stream_url(self) -> str:
@@ -89,7 +111,7 @@ class HausfunkCoordinator(DataUpdateCoordinator):
                     webrtc_port=self.config.get(
                         CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT
                     ),
-                    candidates=self.config.get(CONF_GO2RTC_CANDIDATES),
+                    candidates=self.webrtc_candidates,
                 )
                 if restart:
                     await self.go2rtc.restart()

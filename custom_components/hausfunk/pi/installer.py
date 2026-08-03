@@ -165,13 +165,24 @@ class HausfunkInstaller:
         finally:
             await self.ssh.close()
 
-    async def reboot(self, password: str | None = None) -> str:
-        """Reboot the Pi over SSH (requires sudo)."""
-        self._sudo_password = password
+    async def restart_service(self, password: str | None = None) -> str:
+        """Restart only the go2rtc systemd service on the Pi (no device reboot)."""
         try:
             await self.ssh.connect()
-            await self._sudo("reboot")
-            return "Reboot-Befehl an Pi gesendet"
+            status, out, err = await self.ssh.run(
+                f"systemctl --user restart {PI_SERVICE_NAME}"
+            )
+            if status != 0:
+                raise PiCommandError(f"go2rtc-Neustart fehlgeschlagen: {err or out}")
+            await self.ssh.run("sleep 2")
+            status, out, err = await self.ssh.run(
+                f"systemctl --user is-active {PI_SERVICE_NAME}"
+            )
+            if status != 0 or out.strip() != "active":
+                raise PiCommandError(
+                    f"go2rtc-Dienst nicht aktiv nach Neustart: {out.strip()}"
+                )
+            return "go2rtc auf Pi neu gestartet"
         finally:
             await self.ssh.close()
 

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import tests.hass_mock
 
 from custom_components.hausfunk.pi.installer import HausfunkInstaller
+from custom_components.hausfunk.pi.ssh import PiCommandError
 
 CONFIG = {
     "pi_host": "192.168.178.11",
@@ -44,12 +45,31 @@ class TestInstallerUninstall(unittest.IsolatedAsyncioTestCase):
         self.assertIn("/home/pi/hausfunk/go2rtc", joined)
         self.assertIn(".service", joined)
 
-    async def test_reboot_uses_sudo(self):
+    async def test_restart_service_restarts_go2rtc_only(self):
         installer = _installer()
-        installer._sudo = AsyncMock(return_value=(0, "", ""))
-        message = await installer.reboot("sudo-pass")
-        self.assertIn("Reboot", message)
-        installer._sudo.assert_awaited_once()
+        # is-active check must report "active" for a successful restart
+        calls = []
+
+        async def fake_run(cmd, input_data=None, timeout=None):
+            calls.append(cmd)
+            if "is-active" in cmd:
+                return (0, "active", "")
+            return (0, "", "")
+        installer.ssh.run = fake_run
+        message = await installer.restart_service()
+        self.assertIn("go2rtc", message)
+        joined = "\n".join(calls)
+        self.assertIn("systemctl --user restart hausfunk-pi", joined)
+        self.assertNotIn("sudo", joined)
+        self.assertNotIn("reboot", joined)
+
+    async def test_restart_service_fails_when_inactive(self):
+        installer = _installer()
+        async def fake_run(cmd, input_data=None, timeout=None):
+            return (0, "inactive", "")
+        installer.ssh.run = fake_run
+        with self.assertRaises(PiCommandError):
+            await installer.restart_service()
 
 
 if __name__ == "__main__":

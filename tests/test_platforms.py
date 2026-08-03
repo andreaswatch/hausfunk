@@ -87,7 +87,7 @@ class TestEntities(unittest.TestCase):
         keys = [b[0] for b in BUTTONS]
         self.assertEqual(
             keys,
-            ["install_pi", "uninstall_pi", "reboot_pi", "install_ha", "uninstall_ha"],
+            ["install_pi", "uninstall_pi", "restart_pi_go2rtc", "install_ha", "uninstall_ha"],
         )
 
     def test_button_device_info(self):
@@ -102,10 +102,10 @@ class TestEntities(unittest.TestCase):
 
     def test_button_has_entity_name(self):
         button = HausfunkButton(
-            self._coordinator(), "reboot_pi", "Pi neu starten", "mdi:restart", "reboot_pi"
+            self._coordinator(), "restart_pi_go2rtc", "go2rtc auf Pi neu starten", "mdi:restart", "restart_pi_go2rtc"
         )
         self.assertTrue(button.has_entity_name)
-        self.assertEqual(button.name, "Pi neu starten")
+        self.assertEqual(button.name, "go2rtc auf Pi neu starten")
 
 
 class TestCameraAsync(unittest.IsolatedAsyncioTestCase):
@@ -182,15 +182,15 @@ class TestButtonActions(unittest.IsolatedAsyncioTestCase):
             await button.async_press()
             installer.uninstall.assert_awaited_once()
 
-    async def test_reboot_pi_uses_installer(self):
-        button = self._button("reboot_pi")
+    async def test_restart_pi_go2rtc_uses_installer(self):
+        button = self._button("restart_pi_go2rtc")
         with patch(
             "custom_components.hausfunk.button.HausfunkInstaller"
         ) as mock_installer:
             installer = mock_installer.return_value
-            installer.reboot = AsyncMock(return_value="ok")
+            installer.restart_service = AsyncMock(return_value="ok")
             await button.async_press()
-            installer.reboot.assert_awaited_once()
+            installer.restart_service.assert_awaited_once()
 
 
 if __name__ == "__main__":

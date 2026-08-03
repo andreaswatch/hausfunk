@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 BUTTONS = (
     ("install_pi", "Pi einrichten", "mdi:raspberry-pi", "install_pi"),
     ("uninstall_pi", "Pi deinstallieren", "mdi:raspberry-pi", "uninstall_pi"),
-    ("reboot_pi", "Pi neu starten", "mdi:restart", "reboot_pi"),
+    ("restart_pi_go2rtc", "go2rtc auf Pi neu starten", "mdi:restart", "restart_pi_go2rtc"),
     ("install_ha", "HA go2rtc einrichten", "mdi:cog", "install_ha"),
     ("uninstall_ha", "HA go2rtc entfernen", "mdi:cog-off", "uninstall_ha"),
 )
@@ -91,8 +91,8 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
                     await installer.install(config.get(CONF_SUDO_PASSWORD))
                 elif self._action == "uninstall_pi":
                     await installer.uninstall(config.get(CONF_SUDO_PASSWORD))
-                elif self._action == "reboot_pi":
-                    await installer.reboot(config.get(CONF_SUDO_PASSWORD))
+                elif self._action == "restart_pi_go2rtc":
+                    await installer.restart_service()
             except PiCommandError as err:
                 _LOGGER.exception("Pi-Aktion fehlgeschlagen: %s", self._action)
                 raise

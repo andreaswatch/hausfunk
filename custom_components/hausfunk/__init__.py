@@ -73,7 +73,7 @@ _SERVICE_NAMES = (
     "setup_pi",
     "update_pi",
     "uninstall_pi",
-    "reboot_pi",
+    "restart_pi_go2rtc",
     "register_stream",
     "remove_stream",
 )
@@ -144,14 +144,14 @@ async def _async_register_services(hass: HomeAssistant, config: dict):
             _LOGGER.exception("Pi-Deinstallation fehlgeschlagen")
             _notify(hass, "Pi-Deinstallation fehlgeschlagen", str(err), error=True)
 
-    async def _reboot_pi(call: ServiceCall):
+    async def _restart_pi_go2rtc(call: ServiceCall):
         try:
             installer = HausfunkInstaller(hass, _make_ssh(config), config)
-            message = await installer.reboot(config.get(CONF_SUDO_PASSWORD))
+            message = await installer.restart_service()
             _LOGGER.info(message)
-        except (PiCommandError, OSError) as err:
-            _LOGGER.exception("Pi-Reboot fehlgeschlagen")
-            _notify(hass, "Pi-Reboot fehlgeschlagen", str(err), error=True)
+        except PiCommandError as err:
+            _LOGGER.exception("go2rtc-Neustart auf Pi fehlgeschlagen")
+            _notify(hass, "go2rtc-Neustart auf Pi fehlgeschlagen", str(err), error=True)
 
     async def _register_stream(call: ServiceCall):
         coordinator = get_coordinator(hass)
@@ -171,7 +171,7 @@ async def _async_register_services(hass: HomeAssistant, config: dict):
         "setup_pi": _setup_pi,
         "update_pi": _update_pi,
         "uninstall_pi": _uninstall_pi,
-        "reboot_pi": _reboot_pi,
+        "restart_pi_go2rtc": _restart_pi_go2rtc,
         "register_stream": _register_stream,
         "remove_stream": _remove_stream,
     }
