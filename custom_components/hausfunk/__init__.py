@@ -15,7 +15,7 @@ from .const import (
     CONF_SUDO_PASSWORD,
     DOMAIN,
     NAME,
-    PIS,
+    PI_SUBENTRY_TYPE,
     PLATFORMS,
 )
 from .coordinator import HausfunkCoordinator
@@ -30,21 +30,24 @@ _NOTIFICATION_ID = "hausfunk_install"
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Hausfunk from a config entry.
 
-    The entry is a hub for the HA go2rtc instance. Each Pi is a device
-    (config in entry.options[PIS]) registered in the device registry via
-    config_entry_id — no subentries.
+    The entry is a hub for the HA go2rtc instance. Each Pi is a subentry,
+    registered as a device linked to the subentry via config_subentry_id.
     """
     host_config = dict(entry.data)
 
     coordinators: dict[str, HausfunkCoordinator] = {}
-    for pi_host, pi_config in dict(entry.options.get(PIS, {})).items():
+    for subentry_id, subentry in entry.subentries.items():
+        if subentry.subentry_type != PI_SUBENTRY_TYPE:
+            continue
+        pi_config = dict(subentry.data)
+        pi_id = pi_config.get(CONF_PI_HOST)
         coordinator = HausfunkCoordinator(
-            hass, host_config, pi_config, pi_id=pi_host
+            hass, host_config, pi_config, pi_id=pi_id
         )
         await coordinator.register_stream()
         await coordinator.async_config_entry_first_refresh()
-        await _register_pi_device(hass, entry, pi_config)
-        coordinators[pi_host] = coordinator
+        await _register_pi_device(hass, entry, pi_config, subentry_id)
+        coordinators[pi_id] = coordinator
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 
@@ -68,12 +71,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old entries to the hub + devices model.
+    """Migrate old entries to the hub + subentry model.
 
-    v1: Pi data in entry.data (split into host data + Pi options).
-    v2: Pi data in subentries (move into entry.options[PIS]).
+    v1: Pi data in entry.data -> split into host data + Pi subentry.
+    v2: Pi data in subentries -> already correct.
+    v3: Pi data in entry.options["pis"] -> move into Pi subentries.
     """
-    if entry.version == 1:
+    if entry.version <= 1:
         data = dict(entry.data)
         host_keys = {
             "go2rtc_url", "go2rtc_username", "go2rtc_password",
@@ -82,38 +86,51 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
         host_data = {k: v for k, v in data.items() if k in host_keys}
         pi_data = {k: v for k, v in data.items() if k not in host_keys}
-        pis = {}
+        hass.config_entries.async_update_entry(entry, data=host_data, version=2)
         if pi_data:
-            pis[pi_data[CONF_PI_HOST]] = pi_data
-        hass.config_entries.async_update_entry(
-            entry, data=host_data, options={PIS: pis}, version=3
-        )
+            await _add_pi_subentry(hass, entry, pi_data)
         return True
 
     if entry.version == 2:
-        data = dict(entry.data)
-        # v2 stored Pi data in subentries -> move into options[PIS]
-        pis = {}
-        for subentry in entry.subentries.values():
-            if subentry.subentry_type == "pi":
-                pi_data = dict(subentry.data)
-                pis[pi_data.get(CONF_PI_HOST)] = pi_data
-        options = dict(entry.options)
-        options[PIS] = {**options.get(PIS, {}), **pis}
+        # data may hold go2rtc settings; Pi data already lives in subentries
+        hass.config_entries.async_update_entry(entry, version=4)
+        return True
+
+    if entry.version == 3:
+        # Pi data was stored in options["pis"] -> move into subentries
+        pis = dict(entry.options.get("pis", {}))
+        options = {k: v for k, v in entry.options.items() if k != "pis"}
         hass.config_entries.async_update_entry(
-            entry, data=data, options=options, version=3
+            entry, data=dict(entry.data), options=options, version=4
         )
+        for pi_data in pis.values():
+            await _add_pi_subentry(hass, entry, pi_data)
         return True
 
     return True
 
 
+async def _add_pi_subentry(hass: HomeAssistant, entry: ConfigEntry, pi_data: dict):
+    """Add a Pi subentry from migration data."""
+    from homeassistant.config_entries import ConfigSubentry
+
+    host = pi_data.get(CONF_PI_HOST, "Pi")
+    subentry = ConfigSubentry(
+        subentry_type=PI_SUBENTRY_TYPE,
+        title=str(host),
+        data=pi_data,
+        unique_id=str(host),
+    )
+    hass.config_entries.async_add_subentry(entry, subentry)
+
+
 async def _register_pi_device(
-    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict
+    hass: HomeAssistant, entry: ConfigEntry, pi_config: dict, subentry_id: str
 ):
     registry = dr.async_get(hass)
     registry.async_get_or_create(
         config_entry_id=entry.entry_id,
+        config_subentry_id=subentry_id,
         identifiers={(DOMAIN, pi_config[CONF_PI_HOST])},
         name=f"Hausfunk Pi ({pi_config[CONF_PI_HOST]})",
         manufacturer=NAME,
