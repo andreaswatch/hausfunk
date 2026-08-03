@@ -24,14 +24,33 @@ _LOGGER = logging.getLogger(__name__)
 _NOTIFICATION_ID = "hausfunk_install"
 
 
+def get_main_entry(hass: HomeAssistant) -> ConfigEntry | None:
+    """Return the main go2rtc config entry if it exists."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if CONF_PI_HOST not in entry.data:
+            return entry
+    return None
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Hausfunk from a config entry."""
-    # The entry.data contains both host go2rtc config and Pi config
+    # Main entry setup (HA-side go2rtc config)
+    if CONF_PI_HOST not in entry.data:
+        await _async_register_services(hass)
+        return True
+
+    # Pi entry setup
+    main_entry = get_main_entry(hass)
+    if not main_entry:
+        _LOGGER.error("Main Hausfunk Sprechanlage config entry not found.")
+        return False
+
     pi_config = dict(entry.data)
+    go2rtc_config = dict(main_entry.data)
     pi_id = pi_config.get(CONF_PI_HOST)
     
     coordinator = HausfunkCoordinator(
-        hass, entry, pi_config, pi_config, pi_id=pi_id
+        hass, entry, go2rtc_config, pi_config, pi_id=pi_id
     )
     await coordinator.register_stream()
     await coordinator.async_config_entry_first_refresh()
@@ -47,15 +66,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    if CONF_PI_HOST not in entry.data:
+        # Main entry unloading
+        if len(hass.config_entries.async_entries(DOMAIN)) <= 1:
+            for service in _SERVICE_NAMES:
+                if hass.services.has_service(DOMAIN, service):
+                    hass.services.async_remove(DOMAIN, service)
+        return True
+
+    # Pi entry unloading
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        coordinator = hass.data[DOMAIN].pop(entry.entry_id)
-        await coordinator.async_close()
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if coordinator:
+            await coordinator.async_close()
         
         # Only remove services if no entries left
-        if not hass.data[DOMAIN]:
+        if not hass.data.get(DOMAIN):
             for service in _SERVICE_NAMES:
-                hass.services.async_remove(DOMAIN, service)
+                if hass.services.has_service(DOMAIN, service):
+                    hass.services.async_remove(DOMAIN, service)
     return unload_ok
 
 
