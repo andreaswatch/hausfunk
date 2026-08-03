@@ -1,10 +1,24 @@
-"""Hausfunk integration setup and services."""
+"""Hausfunk integration setup and services.
+
+Architecture (HA 2024.12+):
+- Each 'Hausfunk Sprechanlage' is a hub ConfigEntry holding the go2rtc settings.
+- Each Pi device is a ConfigSubentry (type 'pi') of its parent hub entry.
+- 'Gerät hinzufügen' creates a new hub entry.
+- 'Pi hinzufügen' (shown on the hub device page) creates a Pi subentry.
+
+hass.data[DOMAIN][entry_id] = {
+    "go2rtc": Go2rtcClient,
+    "coordinators": {subentry_id: HausfunkCoordinator},
+    "pi_add_callbacks": list[callable],
+}
+"""
 
 import logging
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_PI_HOST,
@@ -16,6 +30,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import HausfunkCoordinator
+from .go2rtc.client import Go2rtcClient
 from .pi.installer import HausfunkInstaller
 from .pi.ssh import PiCommandError, PiSSH
 
@@ -24,70 +39,122 @@ _LOGGER = logging.getLogger(__name__)
 _NOTIFICATION_ID = "hausfunk_install"
 
 
-def get_main_entry(hass: HomeAssistant) -> ConfigEntry | None:
-    """Return the main go2rtc config entry if it exists."""
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if CONF_PI_HOST not in entry.data:
-            return entry
-    return None
+# ---------------------------------------------------------------------------
+# Entry setup / teardown
+# ---------------------------------------------------------------------------
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Hausfunk from a config entry."""
-    # Main entry setup (HA-side go2rtc config)
-    if CONF_PI_HOST not in entry.data:
-        await _async_register_services(hass)
-        return True
-
-    # Pi entry setup
-    main_entry = get_main_entry(hass)
-    if not main_entry:
-        _LOGGER.error("Main Hausfunk Sprechanlage config entry not found.")
-        return False
-
-    pi_config = dict(entry.data)
-    go2rtc_config = dict(main_entry.data)
-    pi_id = pi_config.get(CONF_PI_HOST)
-    
-    coordinator = HausfunkCoordinator(
-        hass, entry, go2rtc_config, pi_config, pi_id=pi_id
+    """Set up a Hausfunk Sprechanlage hub entry."""
+    # Build the go2rtc client for this hub
+    from .go2rtc.client import Go2rtcClient
+    go2rtc_client = Go2rtcClient(
+        url=entry.data.get("go2rtc_url", "http://localhost:11984"),
+        username=entry.data.get("go2rtc_username"),
+        password=entry.data.get("go2rtc_password"),
     )
-    await coordinator.register_stream()
-    await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "go2rtc": go2rtc_client,
+        "coordinators": {},      # subentry_id -> HausfunkCoordinator
+        "pi_add_callbacks": [],  # registered by each platform
+    }
 
+    # Bootstrap existing Pi subentries (those already stored in config_entries)
+    for subentry in entry.subentries.values():
+        await _async_setup_pi(hass, entry, subentry)
+
+    # Forward platform setups so each platform can register its entity-add callback
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     await _async_register_services(hass)
-
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    if CONF_PI_HOST not in entry.data:
-        # Main entry unloading
-        if len(hass.config_entries.async_entries(DOMAIN)) <= 1:
-            for service in _SERVICE_NAMES:
-                if hass.services.has_service(DOMAIN, service):
-                    hass.services.async_remove(DOMAIN, service)
-        return True
-
-    # Pi entry unloading
+    """Unload a Hausfunk Sprechanlage hub entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
-        if coordinator:
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id, {})
+        for coordinator in entry_data.get("coordinators", {}).values():
             await coordinator.async_close()
-        
-        # Only remove services if no entries left
+        client = entry_data.get("go2rtc")
+        if client:
+            await client.close()
+
+        # Remove services only when there are no more hub entries
         if not hass.data.get(DOMAIN):
             for service in _SERVICE_NAMES:
                 if hass.services.has_service(DOMAIN, service):
                     hass.services.async_remove(DOMAIN, service)
     return unload_ok
 
+
+async def async_setup_subentry(
+    hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigEntry
+) -> bool:
+    """Called by HA when a new Pi subentry is created via 'Pi hinzufügen'."""
+    await _async_setup_pi(hass, entry, subentry)
+    return True
+
+
+async def async_unload_subentry(
+    hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigEntry
+) -> bool:
+    """Called by HA when a Pi subentry is removed."""
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+    coordinator = entry_data.get("coordinators", {}).pop(subentry.subentry_id, None)
+    if coordinator:
+        await coordinator.async_close()
+
+    # Remove all entities that belong to this Pi from the entity registry
+    pi_host = subentry.data.get(CONF_PI_HOST, "")
+    if pi_host:
+        registry = er.async_get(hass)
+        for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+            if pi_host in entity_entry.unique_id:
+                registry.async_remove(entity_entry.entity_id)
+
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+async def _async_setup_pi(
+    hass: HomeAssistant, entry: ConfigEntry, subentry
+) -> None:
+    """Create a coordinator for a Pi subentry and notify platforms."""
+    go2rtc_config = dict(entry.data)
+    pi_config = dict(subentry.data)
+    pi_id = pi_config.get(CONF_PI_HOST)
+
+    # Merge go2rtc config into pi_config so the coordinator has everything
+    merged_config = {**go2rtc_config, **pi_config}
+
+    coordinator = HausfunkCoordinator(
+        hass, entry, go2rtc_config, pi_config, pi_id=pi_id
+    )
+    await coordinator.register_stream()
+    await coordinator.async_config_entry_first_refresh()
+
+    entry_data = hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {
+        "go2rtc": None,
+        "coordinators": {},
+        "pi_add_callbacks": [],
+    })
+    entry_data["coordinators"][subentry.subentry_id] = coordinator
+
+    # Notify any platform that has already registered a callback
+    for callback in entry_data["pi_add_callbacks"]:
+        callback(coordinator, subentry.subentry_id)
+
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
 
 _SERVICE_NAMES = (
     "setup_pi",
@@ -120,15 +187,19 @@ def _clear_notification(hass: HomeAssistant):
     persistent_notification.async_dismiss(hass, _NOTIFICATION_ID)
 
 
-def _get_coordinators(hass: HomeAssistant) -> list[HausfunkCoordinator]:
-    """Return all coordinators."""
-    return list(hass.data.get(DOMAIN, {}).values())
+def _get_all_coordinators(hass: HomeAssistant) -> list[HausfunkCoordinator]:
+    """Return all coordinators across all hub entries."""
+    coordinators = []
+    for entry_data in hass.data.get(DOMAIN, {}).values():
+        if isinstance(entry_data, dict):
+            coordinators.extend(entry_data.get("coordinators", {}).values())
+    return coordinators
 
 
 def _get_coordinator(
     hass: HomeAssistant, pi_id: str | None
 ) -> HausfunkCoordinator | None:
-    coordinators = _get_coordinators(hass)
+    coordinators = _get_all_coordinators(hass)
     if not coordinators:
         return None
     if pi_id is None:

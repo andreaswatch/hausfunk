@@ -7,10 +7,10 @@
   "config_flow": true,
   "documentation": "https://github.com/andreaswatch/hausfunk",
   "issue_tracker": "https://github.com/andreaswatch/hausfunk/issues",
-  "integration_type": "device",
+  "integration_type": "hub",
   "iot_class": "local_polling",
   "requirements": [
     "asyncssh==2.24.0"
   ],
-  "version": "0.8.0"
+  "version": "0.9.0"
 }

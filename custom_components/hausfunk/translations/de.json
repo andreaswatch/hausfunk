@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "go2rtc (Home Assistant)",
-        "description": "{detected}. Die Felder sind vorbefüllt, bei Bedarf anpassen. Diese Einstellung gilt für alle Hausfunk-Geräte.",
+        "title": "Hausfunk Sprechanlage einrichten",
+        "description": "{detected}. Die Felder sind vorbefüllt – bei Bedarf anpassen.",
         "data": {
           "go2rtc_url": "go2rtc URL",
           "go2rtc_username": "Benutzer (optional)",
@@ -14,31 +14,6 @@
           "go2rtc_webrtc_port": "HA go2rtc WebRTC-Port",
           "go2rtc_candidates": "WebRTC-Candidates (optional, kommagetrennt)"
         }
-      },
-      "pi": {
-        "title": "Hausfunk Pi verbinden",
-        "description": "SSH-Zugangsdaten und Stream-Details für die Pi.",
-        "data": {
-          "host": "Pi IP-Adresse",
-          "port": "SSH-Port",
-          "username": "SSH-Benutzer",
-          "password": "SSH-Passwort",
-          "sudo_password": "Sudo-Passwort (falls abweichend, optional)",
-          "stream_name": "Stream-Name",
-          "rtsp_port": "Pi-RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port",
-          "width": "Breite",
-          "height": "Höhe",
-          "fps": "Frames pro Sekunde",
-          "audio_gain": "Mic-Verstärkung"
-        }
-      },
-      "install": {
-        "title": "Pi einrichten",
-        "description": "Die Integration installiert jetzt go2rtc auf der Pi und aktiviert den Dienst.",
-        "data": {
-          "install_now": "Pi jetzt einrichten"
-        }
       }
     },
     "error": {
@@ -47,23 +22,51 @@
       "install_failed": "Einrichtung der Pi fehlgeschlagen. Siehe Logs."
     }
   },
+  "config_subentries": {
+    "pi": {
+      "initiate_flow": {
+        "user": "Pi hinzufügen"
+      },
+      "flow_title": "Hausfunk Pi ({host})",
+      "step": {
+        "user": {
+          "title": "Hausfunk Pi verbinden",
+          "description": "SSH-Zugangsdaten und Stream-Details für die Pi.",
+          "data": {
+            "host": "Pi IP-Adresse",
+            "port": "SSH-Port",
+            "username": "SSH-Benutzer",
+            "password": "SSH-Passwort",
+            "sudo_password": "Sudo-Passwort (falls abweichend, optional)",
+            "stream_name": "Stream-Name",
+            "rtsp_port": "Pi-RTSP-Port",
+            "pi_go2rtc_port": "Pi go2rtc API-Port",
+            "width": "Breite",
+            "height": "Höhe",
+            "fps": "Frames pro Sekunde",
+            "audio_gain": "Mic-Verstärkung"
+          }
+        },
+        "install": {
+          "title": "Pi einrichten",
+          "description": "Die Integration installiert jetzt go2rtc auf der Pi und aktiviert den Dienst.",
+          "data": {
+            "install_now": "Pi jetzt einrichten"
+          }
+        }
+      },
+      "error": {
+        "cannot_connect": "Verbindung zur Pi fehlgeschlagen. Prüfe IP, Benutzer und Passwort.",
+        "cannot_detect_arch": "Architektur der Pi konnte nicht ermittelt werden.",
+        "install_failed": "Einrichtung der Pi fehlgeschlagen. Siehe Logs."
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {
-        "title": "Hausfunk Pi Verbindung bearbeiten",
-        "data": {
-          "stream_name": "Stream-Name",
-          "rtsp_port": "Pi-RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port",
-          "width": "Breite",
-          "height": "Höhe",
-          "fps": "Frames pro Sekunde",
-          "audio_gain": "Mic-Verstärkung"
-        }
-      },
-      "go2rtc": {
         "title": "go2rtc (Home Assistant)",
-        "description": "Passe die HA-seitigen go2rtc-Einstellungen an. Diese Änderungen gelten für alle Hausfunk-Geräte.",
+        "description": "Passe die HA-seitigen go2rtc-Einstellungen an.",
         "data": {
           "go2rtc_url": "go2rtc-URL",
           "go2rtc_username": "Benutzername (optional)",

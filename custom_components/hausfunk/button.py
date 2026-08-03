@@ -4,7 +4,7 @@ import logging
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -39,11 +39,24 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    coordinator: HausfunkCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        HausfunkButton(coordinator, key, name, icon, action)
-        for key, name, icon, action in BUTTONS
-    )
+    """Set up buttons for all current Pi subentries and register a callback for new ones."""
+    entry_data = hass.data[DOMAIN][entry.entry_id]
+
+    for coordinator in entry_data["coordinators"].values():
+        async_add_entities(
+            HausfunkButton(coordinator, key, name, icon, action)
+            for key, name, icon, action in BUTTONS
+        )
+
+    @callback
+    def _add_pi(coordinator: HausfunkCoordinator, subentry_id: str):
+        async_add_entities(
+            HausfunkButton(coordinator, key, name, icon, action)
+            for key, name, icon, action in BUTTONS
+        )
+
+    entry_data["pi_add_callbacks"].append(_add_pi)
+    entry.async_on_unload(lambda: entry_data["pi_add_callbacks"].remove(_add_pi))
 
 
 class HausfunkButton(CoordinatorEntity, ButtonEntity):
