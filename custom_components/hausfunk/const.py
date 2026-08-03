@@ -14,6 +14,7 @@ PLATFORMS = ["binary_sensor", "switch", "camera", "button", "select"]
 DEFAULT_SSH_PORT = 22
 DEFAULT_RTSP_PORT = 8554
 DEFAULT_PI_GO2RTC_PORT = 1984
+DEFAULT_PI_WEBRTC_PORT = 8555
 DEFAULT_STREAM_NAME = "tuer"
 DEFAULT_GO2RTC_URL = "http://localhost:11984"
 DEFAULT_GO2RTC_VERSION = "v1.9.14"
@@ -27,6 +28,7 @@ DEFAULT_STREAM_MODE = "webrtc"
 # Stream modes for the HA go2rtc source (how it pulls the Pi stream)
 STREAM_MODE_WEBRTC = "webrtc"  # webrtc:ws://.../api/ws?src=... (two-way audio via relay)
 STREAM_MODE_RTSP = "rtsp"  # rtsp://.../<name>#backchannel=1 (direct RTSP pull)
+STREAM_MODE_BOTH = "both"  # both sources registered, WebRTC primary with RTSP fallback
 
 # Camera defaults
 DEFAULT_WIDTH = 320

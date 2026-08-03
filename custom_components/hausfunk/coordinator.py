@@ -17,6 +17,9 @@ from .const import (
     CONF_GO2RTC_WEBRTC_PORT,
     CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
+    CONF_PI_PASSWORD,
+    CONF_PI_PORT,
+    CONF_PI_USERNAME,
     CONF_RTSP_PORT,
     CONF_STREAM_MODE,
     CONF_STREAM_NAME,
@@ -25,10 +28,13 @@ from .const import (
     DEFAULT_PI_GO2RTC_PORT,
     DEFAULT_STREAM_MODE,
     DOMAIN,
+    STREAM_MODE_BOTH,
     STREAM_MODE_RTSP,
     STREAM_MODE_WEBRTC,
 )
 from .go2rtc.client import Go2rtcClient, Go2rtcError
+from .pi.installer import HausfunkInstaller
+from .pi.ssh import PiCommandError, PiSSH
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,8 +90,32 @@ class HausfunkCoordinator(DataUpdateCoordinator):
 
         # 3. Apply the changes
         if key == CONF_STREAM_MODE:
-            # Re-register the stream in HA's go2rtc
+            # Rewrite the Pi's go2rtc config and restart its service
+            await self._update_pi_config()
+            # Re-register the stream in HA's go2rtc and restart it
             await self.register_stream(persist=True, restart=True)
+
+    async def _update_pi_config(self):
+        """Rewrite the Pi's go2rtc config and restart its go2rtc service.
+
+        The Pi config depends on the stream mode (e.g. the WebRTC server
+        section for ``webrtc``/``both``), so the config is re-rendered and
+        pushed whenever the mode changes. Failures are logged but do not
+        abort the mode switch on the HA side.
+        """
+        ssh = PiSSH(
+            self.pi_config[CONF_PI_HOST],
+            self.pi_config[CONF_PI_PORT],
+            self.pi_config[CONF_PI_USERNAME],
+            self.pi_config[CONF_PI_PASSWORD],
+        )
+        installer = HausfunkInstaller(self.hass, ssh, self.config)
+        try:
+            await installer.connect_and_update_config()
+        except (PiCommandError, OSError) as err:
+            _LOGGER.warning(
+                "Pi-Konfiguration konnte nicht aktualisiert werden: %s", err
+            )
 
 
     @property
@@ -109,29 +139,40 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         return f"{host}:{port}"
 
     @property
-    def stream_url(self) -> str:
-        """HA go2rtc source URL for the Pi stream.
+    def stream_urls(self) -> list[str]:
+        """HA go2rtc source URLs for the Pi stream.
 
         ``webrtc`` mode uses a go2rtc-to-go2rtc WebRTC client link
         (webrtc:ws://.../api/ws) which reliably exposes the Pi's RTSP
         backchannel to WebRTC clients. ``rtsp`` mode pulls the stream
-        directly (backchannel support depends on the Pi go2rtc).
+        directly (backchannel support depends on the Pi go2rtc). ``both``
+        registers both sources so go2rtc can fall back to the RTSP pull
+        when the WebRTC link is unavailable.
         """
         pi_host = self.config[CONF_PI_HOST]
         stream_name = self.config[CONF_STREAM_NAME]
         mode = self.config.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
-        if mode == STREAM_MODE_RTSP:
-            return (
-                f"rtsp://{pi_host}:{self.config[CONF_RTSP_PORT]}"
-                f"/{stream_name}#backchannel=1"
-            )
         pi_go2rtc_port = self.config.get(
             CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT
         )
-        return (
+        webrtc_url = (
             f"webrtc:ws://{pi_host}:{pi_go2rtc_port}/api/ws"
             f"?src={stream_name}"
         )
+        rtsp_url = (
+            f"rtsp://{pi_host}:{self.config[CONF_RTSP_PORT]}"
+            f"/{stream_name}#backchannel=1"
+        )
+        if mode == STREAM_MODE_RTSP:
+            return [rtsp_url]
+        if mode == STREAM_MODE_BOTH:
+            return [webrtc_url, rtsp_url]
+        return [webrtc_url]
+
+    @property
+    def stream_url(self) -> str:
+        """Primary HA go2rtc source URL for the Pi stream."""
+        return self.stream_urls[0]
 
     async def register_stream(
         self, persist: bool = True, restart: bool = False
@@ -142,12 +183,13 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         new config becomes active without manual interaction.
         """
         name = self.config[CONF_STREAM_NAME]
+        urls = self.stream_urls
         try:
-            await self.go2rtc.ensure_stream(name, [self.stream_url])
+            await self.go2rtc.ensure_stream(name, urls)
             if persist:
                 await self.go2rtc.persist_stream(
                     name,
-                    [self.stream_url],
+                    urls,
                     webrtc_port=self.config.get(
                         CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT
                     ),

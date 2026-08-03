@@ -207,7 +207,7 @@ class TestSelectEntity(unittest.IsolatedAsyncioTestCase):
         select = HausfunkStreamModeSelect(coordinator)
         
         self.assertEqual(select.current_option, "webrtc")
-        self.assertEqual(select.options, ["webrtc", "rtsp"])
+        self.assertEqual(select.options, ["webrtc", "rtsp", "both"])
         self.assertEqual(select.device_info["identifiers"], {(DOMAIN, "192.168.178.11")})
         
         await select.async_select_option("rtsp")
@@ -218,9 +218,11 @@ class TestCoordinatorUpdateSetting(unittest.IsolatedAsyncioTestCase):
     async def test_update_setting_stream_mode(self):
         coordinator = _coordinator()
         coordinator.register_stream = AsyncMock()
-        
+        coordinator._update_pi_config = AsyncMock()
+
         await coordinator.async_update_setting("stream_mode", "rtsp")
         self.assertEqual(coordinator.config["stream_mode"], "rtsp")
+        coordinator._update_pi_config.assert_awaited_once()
         coordinator.register_stream.assert_awaited_once_with(persist=True, restart=True)
 
 

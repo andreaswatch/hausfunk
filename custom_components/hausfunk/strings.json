@@ -86,7 +86,8 @@
         "name": "Stream mode",
         "state": {
           "webrtc": "WebRTC",
-          "rtsp": "RTSP"
+          "rtsp": "RTSP",
+          "both": "WebRTC + RTSP"
         }
       }
     }

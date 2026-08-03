@@ -3,21 +3,40 @@ from unittest.mock import AsyncMock, MagicMock
 
 import tests.hass_mock
 
+from custom_components.hausfunk.const import (
+    CONF_AUDIO_GAIN,
+    CONF_FPS,
+    CONF_GO2RTC_VERSION,
+    CONF_HEIGHT,
+    CONF_PI_GO2RTC_PORT,
+    CONF_PI_HOST,
+    CONF_PI_PASSWORD,
+    CONF_PI_PORT,
+    CONF_PI_USERNAME,
+    CONF_RTSP_PORT,
+    CONF_STREAM_MODE,
+    CONF_STREAM_NAME,
+    CONF_WIDTH,
+    STREAM_MODE_RTSP,
+    STREAM_MODE_WEBRTC,
+)
 from custom_components.hausfunk.pi.installer import HausfunkInstaller
 from custom_components.hausfunk.pi.ssh import PiCommandError
 
 CONFIG = {
-    "pi_host": "192.168.178.11",
-    "pi_port": 22,
-    "pi_username": "pi",
-    "pi_password": "secret",
-    "rtsp_port": 8554,
-    "stream_name": "tuer",
-    "width": 320,
-    "height": 240,
-    "fps": 10,
-    "audio_gain": 2.0,
-    "go2rtc_version": "v1.9.14",
+    CONF_PI_HOST: "192.168.178.11",
+    CONF_PI_PORT: 22,
+    CONF_PI_USERNAME: "pi",
+    CONF_PI_PASSWORD: "secret",
+    CONF_PI_GO2RTC_PORT: 1984,
+    CONF_RTSP_PORT: 8554,
+    CONF_STREAM_NAME: "tuer",
+    CONF_STREAM_MODE: STREAM_MODE_WEBRTC,
+    CONF_WIDTH: 320,
+    CONF_HEIGHT: 240,
+    CONF_FPS: 10,
+    CONF_AUDIO_GAIN: 2.0,
+    CONF_GO2RTC_VERSION: "v1.9.14",
 }
 
 
@@ -116,6 +135,35 @@ class TestInstallerDownload(unittest.IsolatedAsyncioTestCase):
             "https://github.com/AlexxIT/go2rtc/releases/download/v1.9.14/go2rtc_linux_arm",
             joined,
         )
+
+
+class TestInstallerConfig(unittest.IsolatedAsyncioTestCase):
+    async def test_write_config_webrtc_mode_includes_webrtc_section(self):
+        installer = _installer()
+        installer.ssh.write_file = AsyncMock()
+        installer.ssh.run = AsyncMock(return_value=(0, "", ""))
+        await installer._write_config()
+
+        content = installer.ssh.write_file.call_args.args[1]
+        self.assertIn('api:\n  listen: ":1984"', content)
+        self.assertIn('rtsp:\n  listen: ":8554"', content)
+        self.assertIn('webrtc:\n  listen: ":8555"', content)
+        self.assertIn("candidates:\n    - 192.168.178.11:8555", content)
+        self.assertNotIn("{{", content)
+
+    async def test_write_config_rtsp_mode_omits_webrtc_section(self):
+        config = dict(CONFIG)
+        config[CONF_STREAM_MODE] = STREAM_MODE_RTSP
+        installer = _installer()
+        installer.config = config
+        installer.ssh.write_file = AsyncMock()
+        installer.ssh.run = AsyncMock(return_value=(0, "", ""))
+        await installer._write_config()
+
+        content = installer.ssh.write_file.call_args.args[1]
+        self.assertIn('rtsp:\n  listen: ":8554"', content)
+        self.assertNotIn("webrtc:", content)
+        self.assertNotIn("{{", content)
 
 
 if __name__ == "__main__":

@@ -8,18 +8,42 @@ from custom_components.hausfunk.pi.installer import _render
 class TestTemplateRender(unittest.TestCase):
     def test_go2rtc_yaml_rendered(self):
         out = _render("go2rtc.yaml.j2", {
+            "pi_go2rtc_port": 1984,
             "rtsp_port": 8554,
             "stream_name": "tuer",
             "width": 320,
             "height": 240,
             "fps": 10,
             "audio_gain": 2.0,
+            "webrtc_section": "",
         })
+        self.assertIn('api:\n  listen: ":1984"', out)
         self.assertIn('listen: ":8554"', out)
         self.assertIn("rpicam-vid -t 0 --inline --width 320 --height 240 --framerate 10", out)
         # go2rtc {output} placeholder must survive rendering
         self.assertIn("-f rtsp {output}#exec=always", out)
         self.assertIn("#backchannel=1#audio=alaw/8000", out)
+        self.assertNotIn("webrtc:", out)
+        self.assertNotIn("{{", out)
+
+    def test_go2rtc_yaml_rendered_with_webrtc_section(self):
+        out = _render("go2rtc.yaml.j2", {
+            "pi_go2rtc_port": 1984,
+            "rtsp_port": 8554,
+            "stream_name": "tuer",
+            "width": 320,
+            "height": 240,
+            "fps": 10,
+            "audio_gain": 2.0,
+            "webrtc_section": (
+                "\nwebrtc:\n"
+                "  listen: \":8555\"\n"
+                "  candidates:\n"
+                "    - 192.168.178.11:8555\n"
+            ),
+        })
+        self.assertIn("webrtc:\n  listen: \":8555\"", out)
+        self.assertIn("candidates:\n    - 192.168.178.11:8555", out)
         self.assertNotIn("{{", out)
 
     def test_service_template_rendered(self):

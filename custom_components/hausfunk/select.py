@@ -13,6 +13,7 @@ from .const import (
     DEFAULT_STREAM_MODE,
     DOMAIN,
     NAME,
+    STREAM_MODE_BOTH,
     STREAM_MODE_RTSP,
     STREAM_MODE_WEBRTC,
 )
@@ -47,7 +48,11 @@ class HausfunkStreamModeSelect(CoordinatorEntity, SelectEntity):
     def __init__(self, coordinator: HausfunkCoordinator):
         super().__init__(coordinator)
         self._attr_unique_id = f"hausfunk_{coordinator.pi_id}_stream_mode"
-        self._attr_options = [STREAM_MODE_WEBRTC, STREAM_MODE_RTSP]
+        self._attr_options = [
+            STREAM_MODE_WEBRTC,
+            STREAM_MODE_RTSP,
+            STREAM_MODE_BOTH,
+        ]
         device_info = {
             "identifiers": {(DOMAIN, coordinator.config[CONF_PI_HOST])},
             "manufacturer": NAME,

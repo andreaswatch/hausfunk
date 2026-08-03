@@ -11,16 +11,23 @@ from ..const import (
     CONF_FPS,
     CONF_GO2RTC_VERSION,
     CONF_HEIGHT,
+    CONF_PI_GO2RTC_PORT,
+    CONF_PI_HOST,
     CONF_PI_USERNAME,
     CONF_RTSP_PORT,
+    CONF_STREAM_MODE,
     CONF_STREAM_NAME,
     CONF_WIDTH,
+    DEFAULT_PI_WEBRTC_PORT,
+    DEFAULT_STREAM_MODE,
     GO2RTC_RELEASE_URL,
     PI_BINARY,
     PI_CONFIG,
     PI_SERVICE_NAME,
     PI_SUBDIR,
     PI_USER_SERVICE_DIR,
+    STREAM_MODE_BOTH,
+    STREAM_MODE_WEBRTC,
 )
 from .ssh import PiCommandError, PiConnectionError, PiSSH
 
@@ -267,13 +274,27 @@ class HausfunkInstaller:
 
     async def _write_config(self):
         """Write go2rtc config file with verification."""
+        mode = self.config.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
+        webrtc_section = ""
+        if mode in (STREAM_MODE_WEBRTC, STREAM_MODE_BOTH):
+            webrtc_port = DEFAULT_PI_WEBRTC_PORT
+            pi_host = self.config[CONF_PI_HOST]
+            webrtc_section = (
+                f"\nwebrtc:\n"
+                f"  listen: \":{webrtc_port}\"\n"
+                f"  candidates:\n"
+                f"    - {pi_host}:{webrtc_port}\n"
+            )
+
         content = _render("go2rtc.yaml.j2", {
+            "pi_go2rtc_port": self.config[CONF_PI_GO2RTC_PORT],
             "rtsp_port": self.config[CONF_RTSP_PORT],
             "stream_name": self.config[CONF_STREAM_NAME],
             "width": self.config[CONF_WIDTH],
             "height": self.config[CONF_HEIGHT],
             "fps": self.config[CONF_FPS],
             "audio_gain": self.config[CONF_AUDIO_GAIN],
+            "webrtc_section": webrtc_section,
         })
         
         await self.ssh.write_file(self._config_path, content)

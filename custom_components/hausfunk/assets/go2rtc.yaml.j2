@@ -1,6 +1,9 @@
+api:
+  listen: ":{{ pi_go2rtc_port }}"
+
 rtsp:
   listen: ":{{ rtsp_port }}"
-
+{{ webrtc_section }}
 streams:
   {{ stream_name }}:
     - exec:rpicam-vid -t 0 --inline --width {{ width }} --height {{ height }} --framerate {{ fps }} --profile baseline -o -#video=h264#exec=always
