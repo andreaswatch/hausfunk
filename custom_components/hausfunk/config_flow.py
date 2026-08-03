@@ -291,12 +291,90 @@ class HausfunkOptionsFlow(OptionsFlow):
 
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
+        self._data = {}
 
     async def async_step_init(self, user_input=None):
+        """Pi-specific stream settings."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            self._data.update(user_input)
+            return await self.async_step_go2rtc()
         return self.async_show_form(
             step_id="init",
             data_schema=_pi_stream_schema(self._entry.data),
         )
+
+    async def async_step_go2rtc(self, user_input=None):
+        """HA-side go2rtc settings (shared across all devices)."""
+        if user_input is not None:
+            self._data.update(user_input)
+            new_data = {**self._entry.data, **self._data}
+            self.hass.config_entries.async_update_entry(
+                self._entry, data=new_data
+            )
+
+            # Propagate the go2rtc settings to all other config entries
+            host_keys = [
+                CONF_GO2RTC_URL, CONF_GO2RTC_USERNAME, CONF_GO2RTC_PASSWORD,
+                CONF_GO2RTC_VERSION, CONF_GO2RTC_HOST, CONF_GO2RTC_RTSP_PORT,
+                CONF_GO2RTC_WEBRTC_PORT, CONF_GO2RTC_CANDIDATES
+            ]
+            other_entries = [
+                e for e in self.hass.config_entries.async_entries(DOMAIN)
+                if e.entry_id != self._entry.entry_id
+            ]
+            for entry in other_entries:
+                updated_data = dict(entry.data)
+                for key in host_keys:
+                    if key in self._data:
+                        updated_data[key] = self._data[key]
+                self.hass.config_entries.async_update_entry(entry, data=updated_data)
+
+            # Reload this and other entries to apply changes
+            await self.hass.config_entries.async_reload(self._entry.entry_id)
+            for entry in other_entries:
+                await self.hass.config_entries.async_reload(entry.entry_id)
+
+            return self.async_create_entry(title="", data={})
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_GO2RTC_URL,
+                    default=self._entry.data.get(CONF_GO2RTC_URL, DEFAULT_GO2RTC_URL),
+                ): str,
+                vol.Optional(
+                    CONF_GO2RTC_USERNAME,
+                    default=self._entry.data.get(CONF_GO2RTC_USERNAME, ""),
+                ): str,
+                vol.Optional(
+                    CONF_GO2RTC_PASSWORD,
+                    default=self._entry.data.get(CONF_GO2RTC_PASSWORD, ""),
+                ): str,
+                vol.Required(
+                    CONF_GO2RTC_VERSION,
+                    default=self._entry.data.get(CONF_GO2RTC_VERSION, DEFAULT_GO2RTC_VERSION),
+                ): str,
+                vol.Required(
+                    CONF_GO2RTC_HOST,
+                    default=self._entry.data.get(CONF_GO2RTC_HOST, DEFAULT_GO2RTC_HOST),
+                ): str,
+                vol.Required(
+                    CONF_GO2RTC_RTSP_PORT,
+                    default=self._entry.data.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_GO2RTC_RTSP_PORT),
+                ): int,
+                vol.Required(
+                    CONF_GO2RTC_WEBRTC_PORT,
+                    default=self._entry.data.get(CONF_GO2RTC_WEBRTC_PORT, DEFAULT_GO2RTC_WEBRTC_PORT),
+                ): int,
+                vol.Optional(
+                    CONF_GO2RTC_CANDIDATES,
+                    default=self._entry.data.get(CONF_GO2RTC_CANDIDATES, DEFAULT_GO2RTC_CANDIDATES),
+                ): str,
+            }
+        )
+        return self.async_show_form(
+            step_id="go2rtc",
+            data_schema=schema,
+        )
+
 

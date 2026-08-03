@@ -67,6 +67,20 @@
           "fps": "Frames per second",
           "audio_gain": "Microphone gain"
         }
+      },
+      "go2rtc": {
+        "title": "go2rtc (Home Assistant)",
+        "description": "Adjust the HA-side go2rtc settings. These changes apply to all Hausfunk devices.",
+        "data": {
+          "go2rtc_url": "go2rtc URL",
+          "go2rtc_username": "Username (optional)",
+          "go2rtc_password": "Password (optional)",
+          "go2rtc_version": "go2rtc version",
+          "go2rtc_host": "HA go2rtc LAN host (used for WebRTC candidate)",
+          "go2rtc_rtsp_port": "HA go2rtc RTSP port",
+          "go2rtc_webrtc_port": "HA go2rtc WebRTC port",
+          "go2rtc_candidates": "WebRTC candidates (optional, comma separated)"
+        }
       }
     }
   }
