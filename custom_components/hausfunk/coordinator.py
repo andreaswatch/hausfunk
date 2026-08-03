@@ -16,10 +16,14 @@ from .const import (
     CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
     CONF_RTSP_PORT,
+    CONF_STREAM_MODE,
     CONF_STREAM_NAME,
     DEFAULT_GO2RTC_WEBRTC_PORT,
     DEFAULT_PI_GO2RTC_PORT,
+    DEFAULT_STREAM_MODE,
     DOMAIN,
+    STREAM_MODE_RTSP,
+    STREAM_MODE_WEBRTC,
 )
 from .go2rtc.client import Go2rtcClient, Go2rtcError
 
@@ -46,20 +50,35 @@ class HausfunkCoordinator(DataUpdateCoordinator):
     def stream_url(self) -> str:
         """HA go2rtc source URL for the Pi stream.
 
-        Uses a go2rtc-to-go2rtc WebRTC client link (webrtc:ws://.../api/ws)
-        instead of plain RTSP, because that is the only way the HA go2rtc
-        reliably exposes the Pi's RTSP backchannel to WebRTC clients.
+        ``webrtc`` mode uses a go2rtc-to-go2rtc WebRTC client link
+        (webrtc:ws://.../api/ws) which reliably exposes the Pi's RTSP
+        backchannel to WebRTC clients. ``rtsp`` mode pulls the stream
+        directly (backchannel support depends on the Pi go2rtc).
         """
+        pi_host = self.config[CONF_PI_HOST]
+        stream_name = self.config[CONF_STREAM_NAME]
+        mode = self.config.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
+        if mode == STREAM_MODE_RTSP:
+            return (
+                f"rtsp://{pi_host}:{self.config[CONF_RTSP_PORT]}"
+                f"/{stream_name}#backchannel=1"
+            )
         pi_go2rtc_port = self.config.get(
             CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT
         )
         return (
-            f"webrtc:ws://{self.config[CONF_PI_HOST]}:{pi_go2rtc_port}/api/ws"
-            f"?src={self.config[CONF_STREAM_NAME]}"
+            f"webrtc:ws://{pi_host}:{pi_go2rtc_port}/api/ws"
+            f"?src={stream_name}"
         )
 
-    async def register_stream(self, persist: bool = True):
-        """Register the stream in go2rtc and persist it to its config."""
+    async def register_stream(
+        self, persist: bool = True, restart: bool = False
+    ):
+        """Register the stream in go2rtc and optionally persist + restart.
+
+        ``restart=True`` triggers a go2rtc restart after persisting so the
+        new config becomes active without manual interaction.
+        """
         name = self.config[CONF_STREAM_NAME]
         try:
             await self.go2rtc.ensure_stream(name, [self.stream_url])
@@ -72,6 +91,8 @@ class HausfunkCoordinator(DataUpdateCoordinator):
                     ),
                     candidates=self.config.get(CONF_GO2RTC_CANDIDATES),
                 )
+                if restart:
+                    await self.go2rtc.restart()
         except Go2rtcError:
             _LOGGER.exception("Stream-Registrierung in go2rtc fehlgeschlagen")
             return False

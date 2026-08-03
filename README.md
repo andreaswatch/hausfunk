@@ -86,8 +86,9 @@ Pi Zero 2W ──(go2rtc, WebRTC)──▶ HA go2rtc ──(WebRTC)──▶ Bro
 2. **Connect Pi:** Pi IP address, SSH port, SSH username, SSH password
    (and sudo password if different from the SSH password).
 3. **Camera and stream:** stream name, RTSP port, Pi go2rtc API port
-   (default `1984`, used for the `webrtc:ws://` relay), width, height, fps,
-   mic gain.
+   (default `1984`, used for the `webrtc:ws://` relay), **stream mode**
+   (`webrtc` = go2rtc-to-go2rtc WebRTC relay, recommended for reliable
+   two-way audio; `rtsp` = direct RTSP pull), width, height, fps, mic gain.
 4. **go2rtc:** URL of the HA go2rtc instance (e.g. `http://localhost:11984`
    with the HA add-on / built-in go2rtc), optional credentials, go2rtc
    version to install on the Pi, the HA go2rtc RTSP host and port

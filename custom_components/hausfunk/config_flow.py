@@ -26,6 +26,7 @@ from .const import (
     CONF_PI_PORT,
     CONF_PI_USERNAME,
     CONF_RTSP_PORT,
+    CONF_STREAM_MODE,
     CONF_STREAM_NAME,
     CONF_SUDO_PASSWORD,
     CONF_WIDTH,
@@ -41,9 +42,12 @@ from .const import (
     DEFAULT_PI_GO2RTC_PORT,
     DEFAULT_RTSP_PORT,
     DEFAULT_SSH_PORT,
+    DEFAULT_STREAM_MODE,
     DEFAULT_STREAM_NAME,
     DEFAULT_WIDTH,
     DOMAIN,
+    STREAM_MODE_RTSP,
+    STREAM_MODE_WEBRTC,
 )
 from .pi.installer import HausfunkInstaller
 from .pi.ssh import PiCommandError, PiConnectionError, PiSSH
@@ -67,6 +71,9 @@ STREAM_SCHEMA = vol.Schema(
         vol.Required(
             CONF_PI_GO2RTC_PORT, default=DEFAULT_PI_GO2RTC_PORT
         ): int,
+        vol.Required(CONF_STREAM_MODE, default=DEFAULT_STREAM_MODE): vol.In(
+            [STREAM_MODE_WEBRTC, STREAM_MODE_RTSP]
+        ),
         vol.Required(CONF_WIDTH, default=DEFAULT_WIDTH): int,
         vol.Required(CONF_HEIGHT, default=DEFAULT_HEIGHT): int,
         vol.Required(CONF_FPS, default=DEFAULT_FPS): int,
@@ -200,6 +207,9 @@ class HausfunkOptionsFlow(OptionsFlow):
                 vol.Required(CONF_STREAM_NAME, default=current.get(CONF_STREAM_NAME, DEFAULT_STREAM_NAME)): str,
                 vol.Required(CONF_RTSP_PORT, default=current.get(CONF_RTSP_PORT, DEFAULT_RTSP_PORT)): int,
                 vol.Required(CONF_PI_GO2RTC_PORT, default=current.get(CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT)): int,
+                vol.Required(CONF_STREAM_MODE, default=current.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)): vol.In(
+                    [STREAM_MODE_WEBRTC, STREAM_MODE_RTSP]
+                ),
                 vol.Required(CONF_WIDTH, default=current.get(CONF_WIDTH, DEFAULT_WIDTH)): int,
                 vol.Required(CONF_HEIGHT, default=current.get(CONF_HEIGHT, DEFAULT_HEIGHT)): int,
                 vol.Required(CONF_FPS, default=current.get(CONF_FPS, DEFAULT_FPS)): int,

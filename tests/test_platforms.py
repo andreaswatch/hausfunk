@@ -150,10 +150,12 @@ class TestButtonActions(unittest.IsolatedAsyncioTestCase):
         )
         return button
 
-    async def test_install_ha_calls_register_stream(self):
+    async def test_install_ha_calls_register_stream_with_restart(self):
         button = self._button("install_ha")
         await button.async_press()
-        button.coordinator.register_stream.assert_awaited_once_with(persist=True)
+        button.coordinator.register_stream.assert_awaited_once_with(
+            persist=True, restart=True
+        )
 
     async def test_uninstall_ha_calls_remove_stream(self):
         button = self._button("uninstall_ha")

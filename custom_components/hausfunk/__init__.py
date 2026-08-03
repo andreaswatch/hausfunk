@@ -155,9 +155,9 @@ async def _async_register_services(hass: HomeAssistant, config: dict):
 
     async def _register_stream(call: ServiceCall):
         coordinator = get_coordinator(hass)
-        ok = await coordinator.register_stream()
+        ok = await coordinator.register_stream(persist=True, restart=True)
         await coordinator.async_request_refresh()
-        if ok:
+        if not ok:
             notify_restart_needed(hass)
 
     async def _remove_stream(call: ServiceCall):

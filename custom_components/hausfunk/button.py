@@ -71,9 +71,9 @@ class HausfunkButton(CoordinatorEntity, ButtonEntity):
         config = self.coordinator.config
         hass = self.coordinator.hass
         if self._action == "install_ha":
-            ok = await self.coordinator.register_stream(persist=True)
+            ok = await self.coordinator.register_stream(persist=True, restart=True)
             await self.coordinator.async_request_refresh()
-            if ok:
+            if not ok:
                 notify_restart_needed(hass)
         elif self._action == "uninstall_ha":
             await self.coordinator.remove_stream()
