@@ -214,11 +214,21 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
         return schema, status
 
 
+def _has_pi_subentry(entry) -> bool:
+    """True if a Pi subentry already exists (max. one device)."""
+    return any(
+        s.subentry_type == PI_SUBENTRY_TYPE
+        for s in entry.subentries.values()
+    )
+
+
 class HausfunkPiSubentryFlow(ConfigSubentryFlow):
     """Handle adding / editing a Pi device as a subentry."""
 
     async def async_step_user(self, user_input=None):
         """Add a new Pi: SSH access + stream settings."""
+        if _has_pi_subentry(self._get_entry()):
+            return self.async_abort(reason="already_configured")
         errors = {}
         if user_input is not None:
             self._data = dict(user_input)

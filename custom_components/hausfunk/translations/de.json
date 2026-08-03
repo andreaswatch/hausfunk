@@ -75,6 +75,9 @@
         "cannot_connect": "Verbindung zur Pi fehlgeschlagen. Prüfe IP, Benutzer und Passwort.",
         "cannot_detect_arch": "Architektur der Pi konnte nicht ermittelt werden.",
         "install_failed": "Einrichtung der Pi fehlgeschlagen. Siehe Logs."
+      },
+      "abort": {
+        "already_configured": "Es ist bereits eine Hausfunk-Pi konfiguriert. Nur ein Gerät wird unterstützt."
       }
     }
   },
