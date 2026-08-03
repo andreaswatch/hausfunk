@@ -6,6 +6,9 @@ import tests.hass_mock
 from custom_components.hausfunk.binary_sensor import HausfunkBinarySensor
 from custom_components.hausfunk.button import BUTTONS, HausfunkButton
 from custom_components.hausfunk.camera import HausfunkCamera
+from custom_components.hausfunk.number import HausfunkNumber
+from custom_components.hausfunk.select import HausfunkStreamModeSelect
+from custom_components.hausfunk.switch import HausfunkStreamSwitch
 from custom_components.hausfunk.const import (
     CONF_GO2RTC_CANDIDATES,
     CONF_GO2RTC_HOST,
@@ -48,8 +51,11 @@ PI_CONFIG = {
 
 
 def _coordinator(data=None):
+    entry = MagicMock()
+    entry.data = {**HOST_CONFIG, **PI_CONFIG}
     coordinator = HausfunkCoordinator(
         hass=MagicMock(),
+        entry=entry,
         host_config=dict(HOST_CONFIG),
         pi_config=dict(PI_CONFIG),
         pi_id="192.168.178.11",
@@ -131,8 +137,10 @@ class TestCameraAsync(unittest.IsolatedAsyncioTestCase):
         host = dict(HOST_CONFIG)
         host[CONF_GO2RTC_HOST] = "10.0.0.5"
         host[CONF_GO2RTC_RTSP_PORT] = 8554
+        entry = MagicMock()
+        entry.data = {**host, **PI_CONFIG}
         coordinator = HausfunkCoordinator(
-            hass=None, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
+            hass=None, entry=entry, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
         )
         coordinator.data = {"pi_reachable": True, "stream_active": True}
         camera = HausfunkCamera(coordinator)
@@ -191,6 +199,65 @@ class TestButtonActions(unittest.IsolatedAsyncioTestCase):
             installer.restart_service = AsyncMock(return_value="ok")
             await button.async_press()
             installer.restart_service.assert_awaited_once()
+
+
+class TestSelectEntity(unittest.IsolatedAsyncioTestCase):
+    async def test_select_mode(self):
+        coordinator = _coordinator()
+        coordinator.async_update_setting = AsyncMock()
+        select = HausfunkStreamModeSelect(coordinator)
+        
+        self.assertEqual(select.current_option, "webrtc")
+        self.assertEqual(select.options, ["webrtc", "rtsp"])
+        self.assertEqual(select.device_info["identifiers"], {(DOMAIN, "192.168.178.11")})
+        
+        await select.async_select_option("rtsp")
+        coordinator.async_update_setting.assert_awaited_once_with("stream_mode", "rtsp")
+
+
+class TestNumberEntities(unittest.IsolatedAsyncioTestCase):
+    async def test_number_width(self):
+        coordinator = _coordinator()
+        coordinator.async_update_setting = AsyncMock()
+        number = HausfunkNumber(
+            coordinator,
+            "width",
+            "width",
+            "mdi:resize",
+            160.0,
+            1920.0,
+            1.0,
+            320,
+        )
+        
+        self.assertEqual(number.native_value, 320)
+        self.assertEqual(number.native_min_value, 160.0)
+        self.assertEqual(number.native_max_value, 1920.0)
+        self.assertEqual(number.native_step, 1.0)
+        
+        await number.async_set_native_value(640.0)
+        coordinator.async_update_setting.assert_awaited_once_with("width", 640)
+
+
+class TestCoordinatorUpdateSetting(unittest.IsolatedAsyncioTestCase):
+    async def test_update_setting_stream_mode(self):
+        coordinator = _coordinator()
+        coordinator.register_stream = AsyncMock()
+        
+        await coordinator.async_update_setting("stream_mode", "rtsp")
+        self.assertEqual(coordinator.config["stream_mode"], "rtsp")
+        coordinator.register_stream.assert_awaited_once_with(persist=True, restart=True)
+
+    async def test_update_setting_pi_param(self):
+        coordinator = _coordinator()
+        
+        with patch("custom_components.hausfunk.coordinator.HausfunkInstaller") as mock_installer:
+            inst = mock_installer.return_value
+            inst.connect_and_update_config = AsyncMock()
+            
+            await coordinator.async_update_setting("width", 640)
+            self.assertEqual(coordinator.config["width"], 640)
+            inst.connect_and_update_config.assert_awaited_once()
 
 
 if __name__ == "__main__":

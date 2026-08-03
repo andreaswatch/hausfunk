@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import MagicMock
 
 import tests.hass_mock
 
@@ -35,8 +36,11 @@ class TestCoordinator(unittest.TestCase):
     def _coordinator(self, **pi_overrides):
         pi = dict(PI_CONFIG)
         pi.update(pi_overrides)
+        entry = MagicMock()
+        entry.data = {**HOST_CONFIG, **pi}
         return HausfunkCoordinator(
             hass=None,
+            entry=entry,
             host_config=HOST_CONFIG,
             pi_config=pi,
             pi_id="192.168.178.11",
@@ -79,8 +83,10 @@ class TestCoordinator(unittest.TestCase):
         host[CONF_GO2RTC_CANDIDATES] = (
             "go2rtc-ha.moers.webredirect.org:8555, 192.168.178.21:8555"
         )
+        entry = MagicMock()
+        entry.data = {**host, **PI_CONFIG}
         coordinator = HausfunkCoordinator(
-            hass=None, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
+            hass=None, entry=entry, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
         )
         self.assertEqual(
             coordinator.webrtc_candidates,
@@ -90,8 +96,10 @@ class TestCoordinator(unittest.TestCase):
     def test_webrtc_candidates_none_for_loopback(self):
         host = dict(HOST_CONFIG)
         host[CONF_GO2RTC_HOST] = "127.0.0.1"
+        entry = MagicMock()
+        entry.data = {**host, **PI_CONFIG}
         coordinator = HausfunkCoordinator(
-            hass=None, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
+            hass=None, entry=entry, host_config=host, pi_config=dict(PI_CONFIG), pi_id="192.168.178.11"
         )
         self.assertIsNone(coordinator.webrtc_candidates)
 

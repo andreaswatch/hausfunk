@@ -3,26 +3,16 @@
     "step": {
       "user": {
         "title": "Hausfunk Pi verbinden",
-        "description": "SSH-Zugangsdaten zur Pi.",
+        "description": "SSH-Zugangsdaten und Stream-Details für die Pi.",
         "data": {
           "host": "Pi IP-Adresse",
           "port": "SSH-Port",
           "username": "SSH-Benutzer",
           "password": "SSH-Passwort",
-          "sudo_password": "Sudo-Passwort (falls abweichend, optional)"
-        }
-      },
-      "stream": {
-        "title": "Kamera und Stream",
-        "data": {
+          "sudo_password": "Sudo-Passwort (falls abweichend, optional)",
           "stream_name": "Stream-Name",
           "rtsp_port": "Pi-RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port",
-          "stream_mode": "Stream-Modus",
-          "width": "Breite",
-          "height": "Höhe",
-          "fps": "Frames pro Sekunde",
-          "audio_gain": "Mic-Verstärkung"
+          "pi_go2rtc_port": "Pi go2rtc API-Port"
         }
       },
       "go2rtc": {
@@ -56,16 +46,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Hausfunk Pi bearbeiten",
+        "title": "Hausfunk Pi Verbindung bearbeiten",
         "data": {
           "stream_name": "Stream-Name",
           "rtsp_port": "Pi-RTSP-Port",
-          "pi_go2rtc_port": "Pi go2rtc API-Port",
-          "stream_mode": "Stream-Modus",
-          "width": "Breite",
-          "height": "Höhe",
-          "fps": "Frames per Sekunde",
-          "audio_gain": "Mic-Verstärkung"
+          "pi_go2rtc_port": "Pi go2rtc API-Port"
         }
       },
       "go2rtc": {
@@ -81,6 +66,31 @@
           "go2rtc_webrtc_port": "HA go2rtc WebRTC-Port",
           "go2rtc_candidates": "WebRTC-Kandidaten (optional, Komma-separiert)"
         }
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "stream_mode": {
+        "name": "Stream-Modus",
+        "state": {
+          "webrtc": "WebRTC",
+          "rtsp": "RTSP"
+        }
+      }
+    },
+    "number": {
+      "width": {
+        "name": "Breite"
+      },
+      "height": {
+        "name": "Höhe"
+      },
+      "fps": {
+        "name": "Frames pro Sekunde"
+      },
+      "audio_gain": {
+        "name": "Mic-Verstärkung"
       }
     }
   }

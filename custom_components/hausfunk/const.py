@@ -8,7 +8,7 @@ NAME = "Hausfunk"
 # subentry type for Pi devices (provides the native "+ Add Pi" button)
 PI_SUBENTRY_TYPE = "pi"
 
-PLATFORMS = ["binary_sensor", "switch", "camera", "button"]
+PLATFORMS = ["binary_sensor", "switch", "camera", "button", "select", "number"]
 
 # Defaults
 DEFAULT_SSH_PORT = 22

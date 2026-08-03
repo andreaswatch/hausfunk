@@ -3,26 +3,16 @@
     "step": {
       "user": {
         "title": "Connect Hausfunk Pi",
-        "description": "SSH credentials for the Pi.",
+        "description": "SSH credentials and stream details for the Pi.",
         "data": {
           "host": "Pi IP address",
           "port": "SSH port",
           "username": "SSH username",
           "password": "SSH password",
-          "sudo_password": "Sudo password (if different, optional)"
-        }
-      },
-      "stream": {
-        "title": "Camera and stream",
-        "data": {
+          "sudo_password": "Sudo password (if different, optional)",
           "stream_name": "Stream name",
           "rtsp_port": "Pi RTSP port",
-          "pi_go2rtc_port": "Pi go2rtc API port",
-          "stream_mode": "Stream mode",
-          "width": "Width",
-          "height": "Height",
-          "fps": "Frames per second",
-          "audio_gain": "Microphone gain"
+          "pi_go2rtc_port": "Pi go2rtc API port"
         }
       },
       "go2rtc": {
@@ -56,16 +46,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Edit Hausfunk Pi",
+        "title": "Edit Hausfunk Pi Connection",
         "data": {
           "stream_name": "Stream name",
           "rtsp_port": "Pi RTSP port",
-          "pi_go2rtc_port": "Pi go2rtc API port",
-          "stream_mode": "Stream mode",
-          "width": "Width",
-          "height": "Height",
-          "fps": "Frames per second",
-          "audio_gain": "Microphone gain"
+          "pi_go2rtc_port": "Pi go2rtc API port"
         }
       },
       "go2rtc": {
@@ -81,6 +66,31 @@
           "go2rtc_webrtc_port": "HA go2rtc WebRTC port",
           "go2rtc_candidates": "WebRTC candidates (optional, comma separated)"
         }
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "stream_mode": {
+        "name": "Stream mode",
+        "state": {
+          "webrtc": "WebRTC",
+          "rtsp": "RTSP"
+        }
+      }
+    },
+    "number": {
+      "width": {
+        "name": "Width"
+      },
+      "height": {
+        "name": "Height"
+      },
+      "fps": {
+        "name": "Frames per second"
+      },
+      "audio_gain": {
+        "name": "Microphone gain"
       }
     }
   }

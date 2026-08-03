@@ -67,6 +67,9 @@ PI_SCHEMA = vol.Schema(
         vol.Required(CONF_PI_USERNAME, default="pi"): str,
         vol.Required(CONF_PI_PASSWORD): str,
         vol.Optional(CONF_SUDO_PASSWORD, default=""): str,
+        vol.Required(CONF_STREAM_NAME, default=DEFAULT_STREAM_NAME): str,
+        vol.Required(CONF_RTSP_PORT, default=DEFAULT_RTSP_PORT): int,
+        vol.Required(CONF_PI_GO2RTC_PORT, default=DEFAULT_PI_GO2RTC_PORT): int,
     }
 )
 
@@ -77,7 +80,7 @@ INSTALL_SCHEMA = vol.Schema(
 )
 
 
-def _pi_stream_schema(defaults: dict) -> vol.Schema:
+def _pi_connection_options_schema(defaults: dict) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(
@@ -90,23 +93,6 @@ def _pi_stream_schema(defaults: dict) -> vol.Schema:
                 CONF_PI_GO2RTC_PORT,
                 default=defaults.get(CONF_PI_GO2RTC_PORT, DEFAULT_PI_GO2RTC_PORT),
             ): int,
-            vol.Required(
-                CONF_STREAM_MODE,
-                default=defaults.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE),
-            ): vol.In([STREAM_MODE_WEBRTC, STREAM_MODE_RTSP]),
-            vol.Required(
-                CONF_WIDTH, default=defaults.get(CONF_WIDTH, DEFAULT_WIDTH)
-            ): int,
-            vol.Required(
-                CONF_HEIGHT, default=defaults.get(CONF_HEIGHT, DEFAULT_HEIGHT)
-            ): int,
-            vol.Required(
-                CONF_FPS, default=defaults.get(CONF_FPS, DEFAULT_FPS)
-            ): int,
-            vol.Required(
-                CONF_AUDIO_GAIN,
-                default=defaults.get(CONF_AUDIO_GAIN, DEFAULT_AUDIO_GAIN),
-            ): vol.Coerce(float),
         }
     )
 
@@ -134,22 +120,19 @@ class HausfunkConfigFlow(ConfigFlow, domain=DOMAIN):
             self._data.update(user_input)
             errors = await self._validate_pi(user_input)
             if not errors:
-                return await self.async_step_stream()
+                # Populate default runtime/input settings
+                self._data.setdefault(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
+                self._data.setdefault(CONF_WIDTH, DEFAULT_WIDTH)
+                self._data.setdefault(CONF_HEIGHT, DEFAULT_HEIGHT)
+                self._data.setdefault(CONF_FPS, DEFAULT_FPS)
+                self._data.setdefault(CONF_AUDIO_GAIN, DEFAULT_AUDIO_GAIN)
+                return await self.async_step_go2rtc()
         return self.async_show_form(
             step_id="user", data_schema=PI_SCHEMA, errors=errors,
             description_placeholders={
                 "fingerprint": getattr(self, "_fingerprint", ""),
                 "detected": "",  # Fallback for cached frontend translations (v0.6.2)
             },
-        )
-
-    async def async_step_stream(self, user_input=None):
-        """Pi stream/camera settings."""
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_go2rtc()
-        return self.async_show_form(
-            step_id="stream", data_schema=_pi_stream_schema({})
         )
 
     async def async_step_go2rtc(self, user_input=None):
@@ -294,13 +277,13 @@ class HausfunkOptionsFlow(OptionsFlow):
         self._data = {}
 
     async def async_step_init(self, user_input=None):
-        """Pi-specific stream settings."""
+        """Pi-specific connection settings."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_go2rtc()
         return self.async_show_form(
             step_id="init",
-            data_schema=_pi_stream_schema(self._entry.data),
+            data_schema=_pi_connection_options_schema(self._entry.data),
         )
 
     async def async_step_go2rtc(self, user_input=None):

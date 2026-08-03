@@ -4,21 +4,29 @@ import asyncio
 import logging
 from datetime import timedelta
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONF_AUDIO_GAIN,
+    CONF_FPS,
     CONF_GO2RTC_CANDIDATES,
     CONF_GO2RTC_HOST,
     CONF_GO2RTC_PASSWORD,
     CONF_GO2RTC_URL,
     CONF_GO2RTC_USERNAME,
     CONF_GO2RTC_WEBRTC_PORT,
+    CONF_HEIGHT,
     CONF_PI_GO2RTC_PORT,
     CONF_PI_HOST,
+    CONF_PI_PASSWORD,
+    CONF_PI_PORT,
+    CONF_PI_USERNAME,
     CONF_RTSP_PORT,
     CONF_STREAM_MODE,
     CONF_STREAM_NAME,
+    CONF_WIDTH,
     DEFAULT_GO2RTC_HOST,
     DEFAULT_GO2RTC_WEBRTC_PORT,
     DEFAULT_PI_GO2RTC_PORT,
@@ -28,6 +36,8 @@ from .const import (
     STREAM_MODE_WEBRTC,
 )
 from .go2rtc.client import Go2rtcClient, Go2rtcError
+from .pi.installer import HausfunkInstaller
+from .pi.ssh import PiSSH
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +55,7 @@ class HausfunkCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
+        entry: ConfigEntry,
         host_config: dict,
         pi_config: dict,
         pi_id: str | None = None,
@@ -52,6 +63,7 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL
         )
+        self.config_entry = entry
         self.host_config = host_config
         self.pi_config = pi_config
         self.pi_id = pi_id
@@ -61,6 +73,41 @@ class HausfunkCoordinator(DataUpdateCoordinator):
             username=host_config.get(CONF_GO2RTC_USERNAME) or None,
             password=host_config.get(CONF_GO2RTC_PASSWORD) or None,
         )
+
+    async def async_update_setting(self, key: str, value: any):
+        """Update a config entry setting and apply the change."""
+        # 1. Update the config entry data
+        new_data = {**self.config_entry.data, key: value}
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, data=new_data
+        )
+
+        # 2. Update cached configs
+        self.config[key] = value
+        if key in self.pi_config:
+            self.pi_config[key] = value
+        if key in self.host_config:
+            self.host_config[key] = value
+
+        # 3. Apply the changes
+        if key == CONF_STREAM_MODE:
+            # Re-register the stream in HA's go2rtc
+            await self.register_stream(persist=True, restart=True)
+        elif key in (CONF_WIDTH, CONF_HEIGHT, CONF_FPS, CONF_AUDIO_GAIN):
+            # Rewrite config on Pi and restart Pi service
+            ssh = PiSSH(
+                self.pi_config[CONF_PI_HOST],
+                self.pi_config[CONF_PI_PORT],
+                self.pi_config[CONF_PI_USERNAME],
+                self.pi_config[CONF_PI_PASSWORD],
+            )
+            installer = HausfunkInstaller(self.hass, ssh, self.config)
+            try:
+                await installer.connect_and_update_config()
+            except Exception as err:
+                _LOGGER.exception("Fehler beim Aktualisieren der Pi-Konfiguration: %s", err)
+                raise
+
 
     @property
     def webrtc_candidates(self) -> str | None:

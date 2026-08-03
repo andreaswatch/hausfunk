@@ -346,3 +346,18 @@ class HausfunkInstaller:
             raise PiCommandError(f"Service nicht aktiv: {out.strip()}\nStatus: {out2}")
         
         _LOGGER.debug(f"Service erfolgreich aktiviert: {PI_SERVICE_NAME}")
+
+    async def connect_and_update_config(self):
+        """Connect to the Pi, rewrite the config and restart the service."""
+        try:
+            await self.ssh.connect()
+            await self._detect_home()
+            await self._write_config()
+            status, out, err = await self.ssh.run(
+                f"systemctl --user restart {PI_SERVICE_NAME}"
+            )
+            if status != 0:
+                raise PiCommandError(f"Restart des Dienstes fehlgeschlagen: {err or out}")
+            _LOGGER.debug("Pi-Konfiguration erfolgreich aktualisiert und neu gestartet")
+        finally:
+            await self.ssh.close()

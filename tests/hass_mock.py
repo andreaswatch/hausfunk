@@ -125,10 +125,62 @@ class DummyButtonEntity(DummyEntity):
         pass
 
 
+class DummyNumberEntity(DummyEntity):
+    _attr_native_min_value = None
+    _attr_native_max_value = None
+    _attr_native_step = None
+
+    def __init__(self):
+        super().__init__()
+        for attr in ("_attr_native_min_value", "_attr_native_max_value", "_attr_native_step"):
+            setattr(self, attr, getattr(type(self), attr, None))
+
+    @property
+    def native_value(self):
+        return None
+
+    @property
+    def native_min_value(self):
+        return self._attr_native_min_value
+
+    @property
+    def native_max_value(self):
+        return self._attr_native_max_value
+
+    @property
+    def native_step(self):
+        return self._attr_native_step
+
+    async def async_set_native_value(self, value: float):
+        pass
+
+
+class DummySelectEntity(DummyEntity):
+    _attr_options = None
+
+    def __init__(self):
+        super().__init__()
+        for attr in ("_attr_options",):
+            setattr(self, attr, getattr(type(self), attr, None))
+
+    @property
+    def current_option(self):
+        return None
+
+    @property
+    def options(self):
+        return self._attr_options
+
+    async def async_select_option(self, option: str):
+        pass
+
+
 components_mock = MagicMock()
 components_mock.binary_sensor.BinarySensorEntity = DummyBinarySensorEntity
 components_mock.switch.SwitchEntity = DummySwitchEntity
 components_mock.button.ButtonEntity = DummyButtonEntity
+components_mock.number.NumberEntity = DummyNumberEntity
+components_mock.select.SelectEntity = DummySelectEntity
 
 
 class DummyCameraEntity(DummyEntity):
@@ -155,6 +207,8 @@ sys.modules["homeassistant.components.binary_sensor"] = components_mock.binary_s
 sys.modules["homeassistant.components.switch"] = components_mock.switch
 sys.modules["homeassistant.components.camera"] = components_mock.camera
 sys.modules["homeassistant.components.button"] = components_mock.button
+sys.modules["homeassistant.components.number"] = components_mock.number
+sys.modules["homeassistant.components.select"] = components_mock.select
 
 # persistent_notification component
 pn_mock = MagicMock()

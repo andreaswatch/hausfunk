@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     pi_id = pi_config.get(CONF_PI_HOST)
     
     coordinator = HausfunkCoordinator(
-        hass, pi_config, pi_config, pi_id=pi_id
+        hass, entry, pi_config, pi_config, pi_id=pi_id
     )
     await coordinator.register_stream()
     await coordinator.async_config_entry_first_refresh()
