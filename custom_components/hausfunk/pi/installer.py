@@ -27,6 +27,7 @@ from ..const import (
     PI_SUBDIR,
     PI_USER_SERVICE_DIR,
     STREAM_MODE_BOTH,
+    STREAM_MODE_RTSP_WEBRTC,
     STREAM_MODE_WEBRTC,
 )
 from .ssh import PiCommandError, PiConnectionError, PiSSH
@@ -276,7 +277,7 @@ class HausfunkInstaller:
         """Write go2rtc config file with verification."""
         mode = self.config.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
         webrtc_section = ""
-        if mode in (STREAM_MODE_WEBRTC, STREAM_MODE_BOTH):
+        if mode in (STREAM_MODE_WEBRTC, STREAM_MODE_BOTH, STREAM_MODE_RTSP_WEBRTC):
             webrtc_port = DEFAULT_PI_WEBRTC_PORT
             pi_host = self.config[CONF_PI_HOST]
             webrtc_section = (

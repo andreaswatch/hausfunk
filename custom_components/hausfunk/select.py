@@ -15,6 +15,7 @@ from .const import (
     NAME,
     STREAM_MODE_BOTH,
     STREAM_MODE_RTSP,
+    STREAM_MODE_RTSP_WEBRTC,
     STREAM_MODE_WEBRTC,
 )
 from .coordinator import HausfunkCoordinator
@@ -52,6 +53,7 @@ class HausfunkStreamModeSelect(CoordinatorEntity, SelectEntity):
             STREAM_MODE_WEBRTC,
             STREAM_MODE_RTSP,
             STREAM_MODE_BOTH,
+            STREAM_MODE_RTSP_WEBRTC,
         ]
         device_info = {
             "identifiers": {(DOMAIN, coordinator.config[CONF_PI_HOST])},

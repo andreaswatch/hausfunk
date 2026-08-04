@@ -30,6 +30,7 @@ from .const import (
     DOMAIN,
     STREAM_MODE_BOTH,
     STREAM_MODE_RTSP,
+    STREAM_MODE_RTSP_WEBRTC,
     STREAM_MODE_WEBRTC,
 )
 from .go2rtc.client import Go2rtcClient, Go2rtcError
@@ -147,7 +148,8 @@ class HausfunkCoordinator(DataUpdateCoordinator):
         backchannel to WebRTC clients. ``rtsp`` mode pulls the stream
         directly (backchannel support depends on the Pi go2rtc). ``both``
         registers both sources so go2rtc can fall back to the RTSP pull
-        when the WebRTC link is unavailable.
+        when the WebRTC link is unavailable. ``rtsp_webrtc`` is like
+        ``both`` but with RTSP as the primary source.
         """
         pi_host = self.config[CONF_PI_HOST]
         stream_name = self.config[CONF_STREAM_NAME]
@@ -167,6 +169,8 @@ class HausfunkCoordinator(DataUpdateCoordinator):
             return [rtsp_url]
         if mode == STREAM_MODE_BOTH:
             return [webrtc_url, rtsp_url]
+        if mode == STREAM_MODE_RTSP_WEBRTC:
+            return [rtsp_url, webrtc_url]
         return [webrtc_url]
 
     @property

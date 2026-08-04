@@ -87,7 +87,8 @@
         "state": {
           "webrtc": "WebRTC",
           "rtsp": "RTSP",
-          "both": "WebRTC + RTSP"
+          "both": "WebRTC + RTSP",
+          "rtsp_webrtc": "RTSP + WebRTC"
         }
       }
     }

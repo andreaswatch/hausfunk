@@ -18,6 +18,7 @@ from custom_components.hausfunk.const import (
     CONF_STREAM_NAME,
     CONF_WIDTH,
     STREAM_MODE_RTSP,
+    STREAM_MODE_RTSP_WEBRTC,
     STREAM_MODE_WEBRTC,
 )
 from custom_components.hausfunk.pi.installer import HausfunkInstaller
@@ -163,6 +164,22 @@ class TestInstallerConfig(unittest.IsolatedAsyncioTestCase):
         content = installer.ssh.write_file.call_args.args[1]
         self.assertIn('rtsp:\n  listen: ":8554"', content)
         self.assertNotIn("webrtc:", content)
+        self.assertNotIn("{{", content)
+
+    async def test_write_config_rtsp_webrtc_mode_includes_webrtc_section(self):
+        config = dict(CONFIG)
+        config[CONF_STREAM_MODE] = STREAM_MODE_RTSP_WEBRTC
+        installer = _installer()
+        installer.config = config
+        installer.ssh.write_file = AsyncMock()
+        installer.ssh.run = AsyncMock(return_value=(0, "", ""))
+        await installer._write_config()
+
+        content = installer.ssh.write_file.call_args.args[1]
+        self.assertIn('api:\n  listen: ":1984"', content)
+        self.assertIn('rtsp:\n  listen: ":8554"', content)
+        self.assertIn('webrtc:\n  listen: ":8555"', content)
+        self.assertIn("candidates:\n    - 192.168.178.11:8555", content)
         self.assertNotIn("{{", content)
 
 

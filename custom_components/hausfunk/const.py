@@ -23,12 +23,13 @@ DEFAULT_GO2RTC_HOST = "127.0.0.1"
 DEFAULT_GO2RTC_RTSP_PORT = 18554
 DEFAULT_GO2RTC_WEBRTC_PORT = 8555
 DEFAULT_GO2RTC_CANDIDATES = ""
-DEFAULT_STREAM_MODE = "webrtc"
+DEFAULT_STREAM_MODE = "rtsp"
 
 # Stream modes for the HA go2rtc source (how it pulls the Pi stream)
 STREAM_MODE_WEBRTC = "webrtc"  # webrtc:ws://.../api/ws?src=... (two-way audio via relay)
 STREAM_MODE_RTSP = "rtsp"  # rtsp://.../<name>#backchannel=1 (direct RTSP pull)
 STREAM_MODE_BOTH = "both"  # both sources registered, WebRTC primary with RTSP fallback
+STREAM_MODE_RTSP_WEBRTC = "rtsp_webrtc"  # both sources registered, RTSP primary with WebRTC fallback
 
 # Camera defaults
 DEFAULT_WIDTH = 320
