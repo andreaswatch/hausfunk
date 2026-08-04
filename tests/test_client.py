@@ -75,6 +75,11 @@ class TestGo2rtcPersistStream(unittest.IsolatedAsyncioTestCase):
         )
         # existing sections preserved
         self.assertEqual(data["api"]["listen"], ":1984")
+        # default STUN server added
+        self.assertEqual(
+            data["webrtc"]["ice_servers"],
+            [{"urls": ["stun:stun.l.google.com:19302"]}],
+        )
 
     async def test_persist_stream_fills_default_ports_when_missing(self):
         # empty config -> api/rtsp/webrtc listen defaults are filled in
@@ -88,6 +93,11 @@ class TestGo2rtcPersistStream(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["rtsp"]["listen"], ":8554")
         self.assertEqual(data["webrtc"]["listen"], ":8555")
         self.assertEqual(data["preload"]["tuer"], "video&audio")
+        # default STUN server added
+        self.assertEqual(
+            data["webrtc"]["ice_servers"],
+            [{"urls": ["stun:stun.l.google.com:19302"]}],
+        )
 
     async def test_persist_stream_keeps_custom_ports(self):
         # existing custom ports survive the merge
@@ -108,6 +118,31 @@ class TestGo2rtcPersistStream(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["webrtc"]["listen"], ":8555")
         self.assertNotIn("candidates", data.get("webrtc", {}))
         self.assertEqual(data["preload"]["tuer"], "video&audio")
+        # default STUN server added
+        self.assertEqual(
+            data["webrtc"]["ice_servers"],
+            [{"urls": ["stun:stun.l.google.com:19302"]}],
+        )
+
+    async def test_persist_stream_custom_ice_servers(self):
+        client, calls = self._client()
+        await client.persist_stream(
+            "tuer",
+            ["webrtc:ws://192.168.178.11:1984/api/ws?src=tuer"],
+            ice_servers=[
+                {"urls": ["stun:stun.example.com:3478"]},
+                {"urls": ["turn:turn.example.com:3478"], "username": "user", "credential": "pass"},
+            ],
+        )
+        import yaml
+        data = yaml.safe_load(self._posted)
+        self.assertEqual(
+            data["webrtc"]["ice_servers"],
+            [
+                {"urls": ["stun:stun.example.com:3478"]},
+                {"urls": ["turn:turn.example.com:3478"], "username": "user", "credential": "pass"},
+            ],
+        )
 
     async def test_restart(self):
         client, calls = self._client()

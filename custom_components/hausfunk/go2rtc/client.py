@@ -137,6 +137,7 @@ class Go2rtcClient:
         urls: list[str],
         webrtc_port: int | None = None,
         candidates: str | None = None,
+        ice_servers: list[dict] | None = None,
     ):
         """Merge the stream into go2rtc's config file so it survives restarts.
 
@@ -163,6 +164,10 @@ class Go2rtcClient:
             entries = [c.strip() for c in candidates.split(",") if c.strip()]
             if entries:
                 webrtc["candidates"] = entries
+        if ice_servers is not None:
+            webrtc["ice_servers"] = ice_servers
+        elif "ice_servers" not in webrtc:
+            webrtc["ice_servers"] = [{"urls": ["stun:stun.l.google.com:19302"]}]
         body = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
         await self._request(
             "POST", "/api/config", data=body, content_type="application/yaml"
