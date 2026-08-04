@@ -87,8 +87,16 @@
         "state": {
           "webrtc": "WebRTC",
           "rtsp": "RTSP",
-          "both": "WebRTC + RTSP",
-          "rtsp_webrtc": "RTSP + WebRTC"
+          "both": "WebRTC + RTSP"
+        }
+      },
+      "audio_codec": {
+        "name": "Audio codec",
+        "state": {
+          "opus": "Opus",
+          "aac": "AAC",
+          "alaw": "A-law (G.711)",
+          "pcmu": "μ-law (G.711)"
         }
       }
     }

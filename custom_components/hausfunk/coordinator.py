@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONF_AUDIO_CODEC,
     CONF_GO2RTC_CANDIDATES,
     CONF_GO2RTC_HOST,
     CONF_GO2RTC_PASSWORD,
@@ -23,6 +24,7 @@ from .const import (
     CONF_RTSP_PORT,
     CONF_STREAM_MODE,
     CONF_STREAM_NAME,
+    DEFAULT_AUDIO_CODEC,
     DEFAULT_GO2RTC_HOST,
     DEFAULT_GO2RTC_WEBRTC_PORT,
     DEFAULT_PI_GO2RTC_PORT,
@@ -90,7 +92,7 @@ class HausfunkCoordinator(DataUpdateCoordinator):
             self.host_config[key] = value
 
         # 3. Apply the changes
-        if key == CONF_STREAM_MODE:
+        if key in (CONF_STREAM_MODE, CONF_AUDIO_CODEC):
             # Rewrite the Pi's go2rtc config and restart its service
             await self._update_pi_config()
             # Re-register the stream in HA's go2rtc and restart it

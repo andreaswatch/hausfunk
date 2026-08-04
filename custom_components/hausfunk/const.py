@@ -31,6 +31,13 @@ STREAM_MODE_RTSP = "rtsp"  # rtsp://.../<name>#backchannel=1 (direct RTSP pull)
 STREAM_MODE_BOTH = "both"  # both sources registered, WebRTC primary with RTSP fallback
 STREAM_MODE_RTSP_WEBRTC = "rtsp_webrtc"  # both sources registered, RTSP primary with WebRTC fallback
 
+# Audio codecs for the Pi microphone stream
+AUDIO_CODEC_OPUS = "opus"
+AUDIO_CODEC_AAC = "aac"
+AUDIO_CODEC_ALAW = "alaw"
+AUDIO_CODEC_PCMU = "pcmu"
+DEFAULT_AUDIO_CODEC = AUDIO_CODEC_OPUS
+
 # Camera defaults
 DEFAULT_WIDTH = 320
 DEFAULT_HEIGHT = 240
@@ -62,6 +69,7 @@ CONF_WIDTH = "width"
 CONF_HEIGHT = "height"
 CONF_FPS = "fps"
 CONF_AUDIO_GAIN = "audio_gain"
+CONF_AUDIO_CODEC = "audio_codec"
 CONF_GO2RTC_URL = "go2rtc_url"
 CONF_GO2RTC_USERNAME = "go2rtc_username"
 CONF_GO2RTC_PASSWORD = "go2rtc_password"

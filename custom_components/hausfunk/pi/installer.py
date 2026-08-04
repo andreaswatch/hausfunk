@@ -7,6 +7,7 @@ import logging
 from homeassistant.core import HomeAssistant
 
 from ..const import (
+    CONF_AUDIO_CODEC,
     CONF_AUDIO_GAIN,
     CONF_FPS,
     CONF_GO2RTC_VERSION,
@@ -18,6 +19,7 @@ from ..const import (
     CONF_STREAM_MODE,
     CONF_STREAM_NAME,
     CONF_WIDTH,
+    DEFAULT_AUDIO_CODEC,
     DEFAULT_PI_WEBRTC_PORT,
     DEFAULT_STREAM_MODE,
     GO2RTC_RELEASE_URL,
@@ -27,8 +29,11 @@ from ..const import (
     PI_SUBDIR,
     PI_USER_SERVICE_DIR,
     STREAM_MODE_BOTH,
-    STREAM_MODE_RTSP_WEBRTC,
     STREAM_MODE_WEBRTC,
+    AUDIO_CODEC_OPUS,
+    AUDIO_CODEC_AAC,
+    AUDIO_CODEC_ALAW,
+    AUDIO_CODEC_PCMU,
 )
 from .ssh import PiCommandError, PiConnectionError, PiSSH
 
@@ -54,6 +59,17 @@ def _render(template_path: str, values: dict) -> str:
     for key, value in values.items():
         content = content.replace(f"{{{{ {key} }}}}", str(value))
     return content
+
+
+def _audio_encoder_params(codec: str) -> str:
+    """Return ffmpeg encoder parameters for the given audio codec."""
+    if codec == AUDIO_CODEC_AAC:
+        return "-c:a aac -b:a 64k"
+    if codec == AUDIO_CODEC_ALAW:
+        return "-c:a pcm_alaw -ar 8000"
+    if codec == AUDIO_CODEC_PCMU:
+        return "-c:a pcm_mulaw -ar 8000"
+    return "-c:a libopus -b:a 32k"
 
 
 class HausfunkInstaller:
@@ -277,7 +293,7 @@ class HausfunkInstaller:
         """Write go2rtc config file with verification."""
         mode = self.config.get(CONF_STREAM_MODE, DEFAULT_STREAM_MODE)
         webrtc_section = ""
-        if mode in (STREAM_MODE_WEBRTC, STREAM_MODE_BOTH, STREAM_MODE_RTSP_WEBRTC):
+        if mode in (STREAM_MODE_WEBRTC, STREAM_MODE_BOTH):
             webrtc_port = DEFAULT_PI_WEBRTC_PORT
             pi_host = self.config[CONF_PI_HOST]
             webrtc_section = (
@@ -287,6 +303,9 @@ class HausfunkInstaller:
                 f"    - {pi_host}:{webrtc_port}\n"
             )
 
+        audio_codec = self.config.get(CONF_AUDIO_CODEC, DEFAULT_AUDIO_CODEC)
+        audio_encoder = _audio_encoder_params(audio_codec)
+
         content = _render("go2rtc.yaml.j2", {
             "pi_go2rtc_port": self.config[CONF_PI_GO2RTC_PORT],
             "rtsp_port": self.config[CONF_RTSP_PORT],
@@ -295,6 +314,7 @@ class HausfunkInstaller:
             "height": self.config[CONF_HEIGHT],
             "fps": self.config[CONF_FPS],
             "audio_gain": self.config[CONF_AUDIO_GAIN],
+            "audio_encoder": audio_encoder,
             "webrtc_section": webrtc_section,
         })
         

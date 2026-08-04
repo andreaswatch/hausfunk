@@ -20,7 +20,6 @@ from custom_components.hausfunk.const import (
     DEFAULT_PI_GO2RTC_PORT,
     STREAM_MODE_BOTH,
     STREAM_MODE_RTSP,
-    STREAM_MODE_RTSP_WEBRTC,
     STREAM_MODE_WEBRTC,
 )
 
@@ -54,16 +53,16 @@ class TestCoordinator(unittest.TestCase):
             pi_id="192.168.178.11",
         )
 
-    def test_stream_url_rtsp_default(self):
+    def test_stream_url_webrtc_go2rtc(self):
         self.assertEqual(
             self._coordinator().stream_url,
-            "rtsp://192.168.178.11:8554/tuer#backchannel=1",
+            "webrtc:ws://192.168.178.11:1984/api/ws?src=tuer",
         )
 
-    def test_stream_url_custom_go2rtc_port_rtsp(self):
+    def test_stream_url_custom_go2rtc_port(self):
         self.assertEqual(
             self._coordinator(**{CONF_PI_GO2RTC_PORT: 1985}).stream_url,
-            "rtsp://192.168.178.11:8554/tuer#backchannel=1",
+            "webrtc:ws://192.168.178.11:1985/api/ws?src=tuer",
         )
 
     def test_stream_url_rtsp_mode(self):
@@ -91,21 +90,6 @@ class TestCoordinator(unittest.TestCase):
         self.assertEqual(
             self._coordinator(**{CONF_STREAM_MODE: STREAM_MODE_BOTH}).stream_url,
             "webrtc:ws://192.168.178.11:1984/api/ws?src=tuer",
-        )
-
-    def test_stream_urls_rtsp_webrtc_mode(self):
-        self.assertEqual(
-            self._coordinator(**{CONF_STREAM_MODE: STREAM_MODE_RTSP_WEBRTC}).stream_urls,
-            [
-                "rtsp://192.168.178.11:8554/tuer#backchannel=1",
-                "webrtc:ws://192.168.178.11:1984/api/ws?src=tuer",
-            ],
-        )
-
-    def test_stream_url_primary_in_rtsp_webrtc_mode(self):
-        self.assertEqual(
-            self._coordinator(**{CONF_STREAM_MODE: STREAM_MODE_RTSP_WEBRTC}).stream_url,
-            "rtsp://192.168.178.11:8554/tuer#backchannel=1",
         )
 
     def test_default_pi_go2rtc_port(self):
